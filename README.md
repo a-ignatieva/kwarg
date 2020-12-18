@@ -23,7 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 This repository contains the program KwARG, and two small programs for data manipulation called "simplify" and "flip". 
 
-A copy of Beagle is also provided, which computes exactly the minimum number of crossover recombinations required for a dataset under the infinite sites assumption (Lyngsø, R., Song, Y.S., and Hein, J. (2005). Minimum Recombination Histories by Branch and Bound. Proceedings of WABI 2005, Lecture Notes in Computer Science, 3692, pp. 239-250).
+A copy of Beagle is also provided, which computes exactly the minimum number of crossover recombinations required for a dataset under the infinite sites assumption (Lyngsø, R. B., Song, Y.S., and Hein, J. (2005). Minimum Recombination Histories by Branch and Bound. Proceedings of WABI 2005, Lecture Notes in Computer Science, 3692, pp. 239-250).
 
 ## Binaries
 Binaries are available for Linux, Mac OS and Windows. 
