@@ -3,7 +3,7 @@
 Software implementing a parsimony-based heuristic algorithm for reconstructing ancestral recombination graphs (ARGs) with recurrent mutation. 
 
 ## Citation
-Ignatieva, A., Lyngs&oslash;, R. B., Jenkins, P. A., and Hein, J. (2020). KwARG: Parsimonious reconstruction of ancestral recombination graphs with recurrent       mutation. [[arXiv]](http://arxiv.org/abs/2012.09562)
+Ignatieva, A., Lyngs&oslash;, R. B., Jenkins, P. A., and Hein, J. KwARG: Parsimonious reconstruction of ancestral recombination graphs with recurrent       mutation. [[arXiv]](http://arxiv.org/abs/2012.09562)
 
 ## License information
 This program is free software: you can redistribute it and/or modify
