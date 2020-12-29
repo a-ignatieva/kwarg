@@ -245,7 +245,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                 sequence[i][j] = '1';
                                 set_genes_character(h, e->event.flip.seq, j, 1);
                             }
-                            else {
+                            else if (sequence[i][j] == '1'){
                                 sequence[i][j] = '0';
                                 set_genes_character(h, e->event.flip.seq, j, 0);
                             }
@@ -307,7 +307,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                 sequence[i][j] = '1';
                                 set_genes_character(h, e->event.flip.seq, j, 1);
                             }
-                            else {
+                            else if (sequence[i][j] == '1') {
                                 sequence[i][j] = '0';
                                 set_genes_character(h, e->event.flip.seq, j, 0);
                             }
