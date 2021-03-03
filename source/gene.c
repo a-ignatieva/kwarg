@@ -4739,216 +4739,167 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
 
     /* Run through all sequences of g */
     for (s = 0; s < g->n; s++) {
-        /* Start by splitting off maximum subsumed prefix */
-        h = copy_genes(g);
-        if(elements != NULL) {
-            elements = elist_make();
-            elist_safeextend(elements, tmp_elements);
-        }
-        if(sites != NULL) {
-            sites = elist_make();
-            elist_safeextend(sites, tmp_sites);
-        }
-        if(split_removeprefix(h, s, a[s].index, a[s].block) != -1){
-            if (eventlist != NULL) {
-                eventlist = MakeLList();
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = RECOMBINATION;
-                e->event.r.seq = s;
-                e->event.r.pos = a[s].index + mulblocksize(a[s].block);
-                Enqueue(eventlist, e);
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = SWAP;
-                e->event.swap.s1 = s;
-                e->event.swap.s2 = g->n;
-                Enqueue(eventlist, e);
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = COALESCENCE;
-                e->event.c.s1 = -1;
-                e->event.c.s2 = g->n;
-                Enqueue(eventlist, e);
+        if (a[s].index + mulblocksize(a[s].block) > 0){
+            /* Start by splitting off maximum subsumed prefix */
+            h = copy_genes(g);
+            if(elements != NULL) {
+                elements = elist_make();
+                elist_safeextend(elements, tmp_elements);
             }
-            implode_genes(h);
-            f(h);
-        }
-        else {
-            free_genes(h);
-        }
-
-#ifdef ENABLE_VERBOSE
-        if (v) {
-            printf("Splitting maximum subsumed prefix off sequence %d at %d\n", s,
-                   mulblocksize(a[s].block) + a[s].index);
-            output_genes_indexed(h, NULL);
-        }
-#endif
-        /* Only consider splitting sequences where maximum subsumed prefix
-         * and maximum subsumed postfix do not overlap.
-         */
-        if ((a[s].block < b[s].block) ||
-                ((a[s].block == b[s].block) && a[s].index < b[s].index)) {
-            /* Determine remaining contenders */
-            for (i = 0; i < g->n; i++) {
-                if ((i == s) ||
-                        (((g->data[s].type[a[s].block] ^ g->data[i].type[a[s].block])
-                          & g->data[s].ancestral[a[s].block]
-                          & g->data[i].ancestral[a[s].block]
-                          & (((unsigned long)2 << a[s].index) - 1))
-                         != 0)) {
-                    /* We will not consider prefixes between s and itself, nor
-                     * between s and a sequence that has a conflict with s no
-                     * later than a in the block containing a.
-                     */
-                    out[i] = 1;
-                    continue;
+            if(sites != NULL) {
+                sites = elist_make();
+                elist_safeextend(sites, tmp_sites);
+            }
+            if(split_removeprefix(h, s, a[s].index, a[s].block) != -1){
+                if (eventlist != NULL) {
+                    eventlist = MakeLList();
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = RECOMBINATION;
+                    e->event.r.seq = s;
+                    e->event.r.pos = a[s].index + mulblocksize(a[s].block);
+                    Enqueue(eventlist, e);
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = SWAP;
+                    e->event.swap.s1 = s;
+                    e->event.swap.s2 = g->n;
+                    Enqueue(eventlist, e);
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = COALESCENCE;
+                    e->event.c.s1 = -1;
+                    e->event.c.s2 = g->n;
+                    Enqueue(eventlist, e);
                 }
-                out[i] = 0;
-                /* Nor will we consider prefixes between s and a sequence that
-                 * has a conflict with s anywhere else before a.
-                 */
-                for (j = 0; j < a[s].block; j++)
-                    if (((g->data[s].type[j] ^ g->data[i].type[j])
-                            & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
-                        /* Conflict detected */
-                        out[i] = 1;
-                        break;
-                    }
-            }
-            /* Convert out list to list of sequence indeces */
-            j = 0;
-            for (i = 0; i < g->n; i++)
-                if (!out[i])
-                    out[j++] = i;
-            if (j == 0)
-                /* No sequences remain */
-                continue;
-
-            /* Determine for which of the contenders we have already
-             * encountered some ancestral material.
-             */
-            /* First determine rightmost occurrence of ancestral material in s */
-            sindex = -1;
-            for (sblock = 0; sblock < a[s].block; sblock++)
-                if ((sindex = lsb(g->data[s].ancestral[sblock])) >= 0)
-                    /* Found it */
-                    break;
-            if (sindex < 0) {
-                /* Haven't found it yet */
-                sindex = lsb(g->data[s].ancestral[sblock]);
-                /* We know that there is some ancestral before a (to end
-                 * subsumation), so we can rest assured that sindex is well
-                 * defined.
-                 */
-                for (i = 0; i < j; i++)
-                    ancestral[i] = g->data[out[i]].ancestral[sblock]
-                                   & (((unsigned long)2 << a[s].index) - 1)
-                                   & ~(((unsigned long)1 << sindex) - 1);
+                implode_genes(h);
+                f(h);
             }
             else {
-                /* Found it - first check block where maximum subsumed prefix
-                 * of s is split off and block where s has leftmost ancestral
-                 * material.
-                 */
-                for (i = 0; i < j; i++) {
-                    if ((g->data[out[i]].ancestral[a[s].block]
-                            & (((unsigned long)2 << a[s].index) - 1)) != 0) {
-                        /* Ancestral material encountered no later than a */
-                        ancestral[i] = 1;
+                free_genes(h);
+            }
+
+    #ifdef ENABLE_VERBOSE
+            if (v) {
+                printf("Splitting maximum subsumed prefix off sequence %d at %d\n", s,
+                    mulblocksize(a[s].block) + a[s].index);
+                output_genes_indexed(h, NULL);
+            }
+    #endif
+            /* Only consider splitting sequences where maximum subsumed prefix
+            * and maximum subsumed postfix do not overlap.
+            */
+            if ((a[s].block < b[s].block) ||
+                    ((a[s].block == b[s].block) && a[s].index < b[s].index)) {
+                /* Determine remaining contenders */
+                for (i = 0; i < g->n; i++) {
+                    if ((i == s) ||
+                            (((g->data[s].type[a[s].block] ^ g->data[i].type[a[s].block])
+                            & g->data[s].ancestral[a[s].block]
+                            & g->data[i].ancestral[a[s].block]
+                            & (((unsigned long)2 << a[s].index) - 1))
+                            != 0)) {
+                        /* We will not consider prefixes between s and itself, nor
+                        * between s and a sequence that has a conflict with s no
+                        * later than a in the block containing a.
+                        */
+                        out[i] = 1;
                         continue;
                     }
-                    if ((g->data[out[i]].ancestral[sblock]
-                            & ~(((unsigned long)1 << sindex) - 1)) != 0) {
-                        /* Ancestral material encountered no sooner than sindex */
-                        ancestral[i] = 1;
-                        continue;
-                    }
-                    /* Then check blocks in between */
-                    ancestral[i] = 0;
-                    for (block = sblock + 1; block < a[s].block; block++)
-                        if (g->data[out[i]].ancestral[block] != 0) {
-                            /* Ancestral material encountered */
-                            ancestral[i] = 1;
+                    out[i] = 0;
+                    /* Nor will we consider prefixes between s and a sequence that
+                    * has a conflict with s anywhere else before a.
+                    */
+                    for (j = 0; j < a[s].block; j++)
+                        if (((g->data[s].type[j] ^ g->data[i].type[j])
+                                & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
+                            /* Conflict detected */
+                            out[i] = 1;
                             break;
                         }
                 }
-            }
+                /* Convert out list to list of sequence indeces */
+                j = 0;
+                for (i = 0; i < g->n; i++)
+                    if (!out[i])
+                        out[j++] = i;
+                if (j == 0)
+                    /* No sequences remain */
+                    continue;
 
-            /* Now determine all prefixes it makes sense to split off from s */
-            index = a[s].index;
-            block = a[s].block;
-            do {
-                /* Update index */
-                if (index == BLOCKSIZE - 1) {
-                    index = 0;
-                    block++;
+                /* Determine for which of the contenders we have already
+                * encountered some ancestral material.
+                */
+                /* First determine rightmost occurrence of ancestral material in s */
+                sindex = -1;
+                for (sblock = 0; sblock < a[s].block; sblock++)
+                    if ((sindex = lsb(g->data[s].ancestral[sblock])) >= 0)
+                        /* Found it */
+                        break;
+                if (sindex < 0) {
+                    /* Haven't found it yet */
+                    sindex = lsb(g->data[s].ancestral[sblock]);
+                    /* We know that there is some ancestral before a (to end
+                    * subsumation), so we can rest assured that sindex is well
+                    * defined.
+                    */
+                    for (i = 0; i < j; i++)
+                        ancestral[i] = g->data[out[i]].ancestral[sblock]
+                                    & (((unsigned long)2 << a[s].index) - 1)
+                                    & ~(((unsigned long)1 << sindex) - 1);
                 }
-                else
-                    index++;
-
-                /* Check whether we have reached b */
-                if ((index == b[s].index) && (block == b[s].block))
-                    break;
-
-                /* If s does not carry ancestral material at current index, we
-                 * might as well postpone the split.
-                 */
-                if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
-                    /* Check remaining contenders for compatibility and maximal prefix */
-                    for (i = 0; i < j;) {
-                        if ((((unsigned long)1 << index) & (g->data[out[i]].ancestral[block])) == 0) {
-                            /* Sequence i does not contain ancestral material in this
-                             * site; split s before this site and coalesce with i.
-                             */
-                            if (ancestral[i]) {
-                                h = copy_genes(g);
-                                if(elements != NULL) {
-                                    elements = elist_make();
-                                    elist_safeextend(elements, tmp_elements);
-                                }
-                                if(sites != NULL) {
-                                    sites = elist_make();
-                                    elist_safeextend(sites, tmp_sites);
-                                }
-                                split_coalesceprefix(h, s, index, block, out[i]);
-                                if (eventlist != NULL) {
-                                    eventlist = MakeLList();
-                                    e = (Event *)xmalloc(sizeof(Event));
-                                    e->type = RECOMBINATION;
-                                    e->event.r.seq = s;
-                                    e->event.r.pos = index + mulblocksize(block);
-                                    Enqueue(eventlist, e);
-                                    e = (Event *)xmalloc(sizeof(Event));
-                                    e->type = SWAP;
-                                    e->event.swap.s1 = s;
-                                    e->event.swap.s2 = g->n;
-                                    Enqueue(eventlist, e);
-                                    e = (Event *)xmalloc(sizeof(Event));
-                                    e->type = COALESCENCE;
-                                    e->event.c.s1 = out[i];
-                                    e->event.c.s2 = g->n;
-                                    Enqueue(eventlist, e);
-                                }
-                                implode_genes(h);
-                                f(h);
-                                
-#ifdef ENABLE_VERBOSE
-                                if (v) {
-                                    printf("Splitting off prefix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
-                                    output_genes_indexed(h, NULL);
-                                }
-#endif
-                            }
-                            i++;
+                else {
+                    /* Found it - first check block where maximum subsumed prefix
+                    * of s is split off and block where s has leftmost ancestral
+                    * material.
+                    */
+                    for (i = 0; i < j; i++) {
+                        if ((g->data[out[i]].ancestral[a[s].block]
+                                & (((unsigned long)2 << a[s].index) - 1)) != 0) {
+                            /* Ancestral material encountered no later than a */
+                            ancestral[i] = 1;
+                            continue;
                         }
-                        else {
-                            /* We now know that both s and i have ancestral material at
-                             * this site.
-                             */
-                            if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
-                                    & ((unsigned long)1 << index)) != 0) {
-                                /* Sequence s and i are incompatible at this site; split
-                                 * s before this site and coalesce with i.
-                                 */
+                        if ((g->data[out[i]].ancestral[sblock]
+                                & ~(((unsigned long)1 << sindex) - 1)) != 0) {
+                            /* Ancestral material encountered no sooner than sindex */
+                            ancestral[i] = 1;
+                            continue;
+                        }
+                        /* Then check blocks in between */
+                        ancestral[i] = 0;
+                        for (block = sblock + 1; block < a[s].block; block++)
+                            if (g->data[out[i]].ancestral[block] != 0) {
+                                /* Ancestral material encountered */
+                                ancestral[i] = 1;
+                                break;
+                            }
+                    }
+                }
+
+                /* Now determine all prefixes it makes sense to split off from s */
+                index = a[s].index;
+                block = a[s].block;
+                do {
+                    /* Update index */
+                    if (index == BLOCKSIZE - 1) {
+                        index = 0;
+                        block++;
+                    }
+                    else
+                        index++;
+
+                    /* Check whether we have reached b */
+                    if ((index == b[s].index) && (block == b[s].block))
+                        break;
+
+                    /* If s does not carry ancestral material at current index, we
+                    * might as well postpone the split.
+                    */
+                    if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
+                        /* Check remaining contenders for compatibility and maximal prefix */
+                        for (i = 0; i < j;) {
+                            if ((((unsigned long)1 << index) & (g->data[out[i]].ancestral[block])) == 0) {
+                                /* Sequence i does not contain ancestral material in this
+                                * site; split s before this site and coalesce with i.
+                                */
                                 if (ancestral[i]) {
                                     h = copy_genes(g);
                                     if(elements != NULL) {
@@ -4969,8 +4920,8 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                         Enqueue(eventlist, e);
                                         e = (Event *)xmalloc(sizeof(Event));
                                         e->type = SWAP;
-                                        e->event.c.s1 = s;
-                                        e->event.c.s2 = g->n;
+                                        e->event.swap.s1 = s;
+                                        e->event.swap.s2 = g->n;
                                         Enqueue(eventlist, e);
                                         e = (Event *)xmalloc(sizeof(Event));
                                         e->type = COALESCENCE;
@@ -4981,33 +4932,84 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     implode_genes(h);
                                     f(h);
                                     
-#ifdef ENABLE_VERBOSE
+    #ifdef ENABLE_VERBOSE
                                     if (v) {
                                         printf("Splitting off prefix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                         output_genes_indexed(h, NULL);
                                     }
-#endif
+    #endif
                                 }
-                                /* Sequence i is no longer a contender */
-                                out[i] = out[--j];
-                                ancestral[i] = ancestral[j];
-                                continue;
+                                i++;
                             }
-                            /* Sequences s and i carry the same ancestral character at
-                             * this site; postpone split but mark that ancestral
-                             * material was encountered.
-                             */
-                            ancestral[i++] = 1;
+                            else {
+                                /* We now know that both s and i have ancestral material at
+                                * this site.
+                                */
+                                if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
+                                        & ((unsigned long)1 << index)) != 0) {
+                                    /* Sequence s and i are incompatible at this site; split
+                                    * s before this site and coalesce with i.
+                                    */
+                                    if (ancestral[i]) {
+                                        h = copy_genes(g);
+                                        if(elements != NULL) {
+                                            elements = elist_make();
+                                            elist_safeextend(elements, tmp_elements);
+                                        }
+                                        if(sites != NULL) {
+                                            sites = elist_make();
+                                            elist_safeextend(sites, tmp_sites);
+                                        }
+                                        split_coalesceprefix(h, s, index, block, out[i]);
+                                        if (eventlist != NULL) {
+                                            eventlist = MakeLList();
+                                            e = (Event *)xmalloc(sizeof(Event));
+                                            e->type = RECOMBINATION;
+                                            e->event.r.seq = s;
+                                            e->event.r.pos = index + mulblocksize(block);
+                                            Enqueue(eventlist, e);
+                                            e = (Event *)xmalloc(sizeof(Event));
+                                            e->type = SWAP;
+                                            e->event.c.s1 = s;
+                                            e->event.c.s2 = g->n;
+                                            Enqueue(eventlist, e);
+                                            e = (Event *)xmalloc(sizeof(Event));
+                                            e->type = COALESCENCE;
+                                            e->event.c.s1 = out[i];
+                                            e->event.c.s2 = g->n;
+                                            Enqueue(eventlist, e);
+                                        }
+                                        implode_genes(h);
+                                        f(h);
+                                        
+    #ifdef ENABLE_VERBOSE
+                                        if (v) {
+                                            printf("Splitting off prefix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
+                                            output_genes_indexed(h, NULL);
+                                        }
+    #endif
+                                    }
+                                    /* Sequence i is no longer a contender */
+                                    out[i] = out[--j];
+                                    ancestral[i] = ancestral[j];
+                                    continue;
+                                }
+                                /* Sequences s and i carry the same ancestral character at
+                                * this site; postpone split but mark that ancestral
+                                * material was encountered.
+                                */
+                                ancestral[i++] = 1;
+                            }
                         }
                     }
-                }
-                else
-                    /* Check for ancestral material in remaining contenders */
-                    for (i = 0; i < j; i++)
-                        ancestral[i] = ancestral[i] ||
-                                       (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
-                /* Continue until we have eliminated all contenders */
-            } while (j > 0);
+                    else
+                        /* Check for ancestral material in remaining contenders */
+                        for (i = 0; i < j; i++)
+                            ancestral[i] = ancestral[i] ||
+                                        (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
+                    /* Continue until we have eliminated all contenders */
+                } while (j > 0);
+            }
         }
     }
 
@@ -5081,226 +5083,183 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
 #endif
 
     /* Run through all sequences of g */
-    for (s = 0; s < g->n; s++)
+    for (s = 0; s < g->n; s++) {
         /* Only consider splitting sequences where maximum subsumed prefix
          * and maximum subsumed postfix do not meet or overlap.
          */
-        if ((a[s].block < b[s].block) ||
-                ((a[s].block == b[s].block) && (a[s].index < b[s].index))) {
-            /* Start by splitting off maximum subsumed postfix */
-            h = copy_genes(g);
-            if(elements != NULL) {
-                elements = elist_make();
-                elist_safeextend(elements, tmp_elements);
-            }
-            if(sites != NULL) {
-                sites = elist_make();
-                elist_safeextend(sites, tmp_sites);
-            }
-            if(split_removepostfix(h, s, b[s].index, b[s].block) != -1) {
-                if (eventlist != NULL) {
-                    eventlist = MakeLList();
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = RECOMBINATION;
-                    e->event.r.seq = s;
-                    e->event.r.pos = b[s].index + mulblocksize(b[s].block);
-                    Enqueue(eventlist, e);
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = -1;
-                    e->event.c.s2 = g->n;
-                    Enqueue(eventlist, e);
+        if (b[s].index + mulblocksize(b[s].block) < g->length) {
+            if ((a[s].block < b[s].block) ||
+                    ((a[s].block == b[s].block) && (a[s].index < b[s].index))) {
+                /* Start by splitting off maximum subsumed postfix */
+                h = copy_genes(g);
+                if(elements != NULL) {
+                    elements = elist_make();
+                    elist_safeextend(elements, tmp_elements);
                 }
-                implode_genes(h);
-                f(h);
-            }
-            else {
-                free_genes(h);
-            }
-#ifdef ENABLE_VERBOSE
-            if (v) {
-                printf("Splitting maximum subsumed postfix off sequence %d at %d\n", s,
-                       mulblocksize(a[s].block) + a[s].index);
-                output_genes_indexed(h, NULL);
-            }
-#endif
-            /* Determine index of site to the left of b, i.e. the first site
-             * not part of a subsumed postfix for s.
-             */
-            if (b[s].index == 0) {
-                index = BLOCKSIZE - 1;
-                block = b[s].block - 1;
-            }
-            else {
-                index = b[s].index - 1;
-                block = b[s].block;
-            }
-            /* Only consider splitting sequences where maximum subsumed prefix
-             * and maximum subsumed postfix are separated by at least two sites.
-             */
-            if ((a[s].block < block) ||
-                    ((a[s].block == block) && a[s].index < index)) {
-
-                /* Determine remaining contenders */
-                for (i = 0; i < g->n; i++) {
-                    if ((i == s)
-                            || (((g->data[s].type[block] ^ g->data[i].type[block])
-                                 & g->data[s].ancestral[block] & g->data[i].ancestral[block]
-                                 & ~(((unsigned long)1 << index) - 1)) != 0)) {
-                        /* We will not consider postfixes between s and itself, nor
-                         * between s and a sequence that has a conflict with s to
-                         * the right of the left neighbour of b in the block
-                         * containing this neighbour.
-                         */
-                        out[i] = 1;
-                        continue;
+                if(sites != NULL) {
+                    sites = elist_make();
+                    elist_safeextend(sites, tmp_sites);
+                }
+                if(split_removepostfix(h, s, b[s].index, b[s].block) != -1) {
+                    if (eventlist != NULL) {
+                        eventlist = MakeLList();
+                        e = (Event *)xmalloc(sizeof(Event));
+                        e->type = RECOMBINATION;
+                        e->event.r.seq = s;
+                        e->event.r.pos = b[s].index + mulblocksize(b[s].block);
+                        Enqueue(eventlist, e);
+                        e = (Event *)xmalloc(sizeof(Event));
+                        e->type = COALESCENCE;
+                        e->event.c.s1 = -1;
+                        e->event.c.s2 = g->n;
+                        Enqueue(eventlist, e);
                     }
-                    out[i] = 0;
-
-                    /* Nor will we consider prefixes between s and a sequence that
-                     * has a conflict with s anywhere else before a.
-                     */
-                    for (j = block + 1; j < blocks; j++)
-                        if (((g->data[s].type[j] ^ g->data[i].type[j])
-                                & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
-                            /* Conflict detected */
-                            out[i] = 1;
-                            break;
-                        }
-                }
-                /* Convert out list to list of sequence indeces */
-                j = 0;
-                for (i = 0; i < g->n; i++)
-                    if (!out[i])
-                        out[j++] = i;
-                if (j == 0)
-                    /* No sequences remain */
-                    continue;
-
-                /* Determine for which of the contenders we have already
-                 * encountered some ancestral material.
-                 */
-                /* Start by finding rightmost occurrence of ancestral material in s */
-                sindex = -1;
-                for (sblock = blocks - 1; sblock > block; sblock--)
-                    if ((sindex = msb(g->data[s].ancestral[sblock])) >= 0)
-                        /* Found it */
-                        break;
-                if (sindex < 0) {
-                    /* Haven't found it yet */
-                    sindex = msb(g->data[s].ancestral[sblock]);
-                    /* We know that there is some ancestral after b (to end
-                     * subsumation), so we can rest assured that sindex is well
-                     * defined.
-                     */
-                    for (i = 0; i < j; i++)
-                        if ((g->data[out[i]].ancestral[sblock]
-                                & ~(((unsigned long)1 << index) - 1) & (((unsigned long)2 << sindex) - 1)) != 0)
-                            /* Ancestral material encountered no sooner than b and no
-                             * later than sindex.
-                             */
-                            ancestral[i] = 1;
-                        else
-                            ancestral[i] = 0;
+                    implode_genes(h);
+                    f(h);
                 }
                 else {
-                    /* Found it - first check block where maximum subsumed postfix
-                     * of s is split off and block where s has rightmost ancestral
-                     * material.
-                     */
-                    for (i = 0; i < j; i++) {
-                        if ((g->data[out[i]].ancestral[block]
-                                & ~(((unsigned long)1 << index) - 1)) != 0) {
-                            /* Ancestral material encountered no sooner than b */
-                            ancestral[i] = 1;
+                    free_genes(h);
+                }
+    #ifdef ENABLE_VERBOSE
+                if (v) {
+                    printf("Splitting maximum subsumed postfix off sequence %d at %d\n", s,
+                        mulblocksize(a[s].block) + a[s].index);
+                    output_genes_indexed(h, NULL);
+                }
+    #endif
+                /* Determine index of site to the left of b, i.e. the first site
+                * not part of a subsumed postfix for s.
+                */
+                if (b[s].index == 0) {
+                    index = BLOCKSIZE - 1;
+                    block = b[s].block - 1;
+                }
+                else {
+                    index = b[s].index - 1;
+                    block = b[s].block;
+                }
+                /* Only consider splitting sequences where maximum subsumed prefix
+                * and maximum subsumed postfix are separated by at least two sites.
+                */
+                if ((a[s].block < block) ||
+                        ((a[s].block == block) && a[s].index < index)) {
+
+                    /* Determine remaining contenders */
+                    for (i = 0; i < g->n; i++) {
+                        if ((i == s)
+                                || (((g->data[s].type[block] ^ g->data[i].type[block])
+                                    & g->data[s].ancestral[block] & g->data[i].ancestral[block]
+                                    & ~(((unsigned long)1 << index) - 1)) != 0)) {
+                            /* We will not consider postfixes between s and itself, nor
+                            * between s and a sequence that has a conflict with s to
+                            * the right of the left neighbour of b in the block
+                            * containing this neighbour.
+                            */
+                            out[i] = 1;
                             continue;
                         }
-                        if ((g->data[out[i]].ancestral[sblock]
-                                & (((unsigned long)2 << sindex) - 1)) != 0) {
-                            /* Ancestral material encountered no later than sindex */
-                            ancestral[i] = 1;
-                            continue;
-                        }
-                        /* Then check blocks in between */
-                        ancestral[i] = 0;
-                        for (k = block + 1; k < sblock; k++)
-                            if (g->data[out[i]].ancestral[k] != 0) {
-                                /* Ancestral material encountered */
-                                ancestral[i] = 1;
+                        out[i] = 0;
+
+                        /* Nor will we consider prefixes between s and a sequence that
+                        * has a conflict with s anywhere else before a.
+                        */
+                        for (j = block + 1; j < blocks; j++)
+                            if (((g->data[s].type[j] ^ g->data[i].type[j])
+                                    & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
+                                /* Conflict detected */
+                                out[i] = 1;
                                 break;
                             }
                     }
-                }
+                    /* Convert out list to list of sequence indeces */
+                    j = 0;
+                    for (i = 0; i < g->n; i++)
+                        if (!out[i])
+                            out[j++] = i;
+                    if (j == 0)
+                        /* No sequences remain */
+                        continue;
 
-                /* Now determine all prefixes it makes sense to split off from s */
-                do {
-                    /* Update index */
-                    if (index == 0) {
-                        index = BLOCKSIZE - 1;
-                        block--;
+                    /* Determine for which of the contenders we have already
+                    * encountered some ancestral material.
+                    */
+                    /* Start by finding rightmost occurrence of ancestral material in s */
+                    sindex = -1;
+                    for (sblock = blocks - 1; sblock > block; sblock--)
+                        if ((sindex = msb(g->data[s].ancestral[sblock])) >= 0)
+                            /* Found it */
+                            break;
+                    if (sindex < 0) {
+                        /* Haven't found it yet */
+                        sindex = msb(g->data[s].ancestral[sblock]);
+                        /* We know that there is some ancestral after b (to end
+                        * subsumation), so we can rest assured that sindex is well
+                        * defined.
+                        */
+                        for (i = 0; i < j; i++)
+                            if ((g->data[out[i]].ancestral[sblock]
+                                    & ~(((unsigned long)1 << index) - 1) & (((unsigned long)2 << sindex) - 1)) != 0)
+                                /* Ancestral material encountered no sooner than b and no
+                                * later than sindex.
+                                */
+                                ancestral[i] = 1;
+                            else
+                                ancestral[i] = 0;
                     }
-                    else
-                        index--;
-                    /* Check whether we have reached a */
-                    if ((index == a[s].index) && (block == a[s].block))
-                        break;
-
-                    /* If s does not carry ancestral material at current index, we
-                     * might as well postpone the split.
-                     */
-                    if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
-                        /* Check remaining contenders for compatibility and
-                         * maximal prefix.
-                         */
-                        for (i = 0; i < j;) {
-                            if ((((unsigned long)1 << index) & (~g->data[out[i]].ancestral[block])) != 0) {
-                                /* Sequence i does not contain ancestral material in this
-                                 * site; split s after this site and coalesce with i.
-                                 */
-                                if (ancestral[i]) {
-                                    h = copy_genes(g);
-                                    if(elements != NULL) {
-                                        elements = elist_make();
-                                        elist_safeextend(elements, tmp_elements);
-                                    }
-                                    if(sites != NULL) {
-                                        sites = elist_make();
-                                        elist_safeextend(sites, tmp_sites);
-                                    }
-                                    splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                    if (eventlist != NULL) {
-                                        eventlist = MakeLList();
-                                        e = (Event *)xmalloc(sizeof(Event));
-                                        e->type = RECOMBINATION;
-                                        e->event.r.seq = s;
-                                        e->event.r.pos = index + mulblocksize(block) + 1;
-                                        Enqueue(eventlist, e);
-                                        e = (Event *)xmalloc(sizeof(Event));
-                                        e->type = COALESCENCE;
-                                        e->event.c.s1 = out[i];
-                                        e->event.c.s2 = g->n;
-                                        Enqueue(eventlist, e);
-                                    }
-                                    implode_genes(h);
-                                    f(h);
-#ifdef ENABLE_VERBOSE
-                                    if (v) {
-                                        printf("Splitting off postfix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
-                                        output_genes_indexed(h, NULL);
-                                    }
-#endif
-                                }
-                                i++;
+                    else {
+                        /* Found it - first check block where maximum subsumed postfix
+                        * of s is split off and block where s has rightmost ancestral
+                        * material.
+                        */
+                        for (i = 0; i < j; i++) {
+                            if ((g->data[out[i]].ancestral[block]
+                                    & ~(((unsigned long)1 << index) - 1)) != 0) {
+                                /* Ancestral material encountered no sooner than b */
+                                ancestral[i] = 1;
+                                continue;
                             }
-                            else {
-                                /* We now know that both s and i have ancestral material at
-                                 * this site.
-                                 */
-                                if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
-                                        & ((unsigned long)1 << index)) != 0) {
-                                    /* Sequence s and i are incompatible at this site; split s
-                                     * after this site and coalesce with i.
-                                     */
+                            if ((g->data[out[i]].ancestral[sblock]
+                                    & (((unsigned long)2 << sindex) - 1)) != 0) {
+                                /* Ancestral material encountered no later than sindex */
+                                ancestral[i] = 1;
+                                continue;
+                            }
+                            /* Then check blocks in between */
+                            ancestral[i] = 0;
+                            for (k = block + 1; k < sblock; k++)
+                                if (g->data[out[i]].ancestral[k] != 0) {
+                                    /* Ancestral material encountered */
+                                    ancestral[i] = 1;
+                                    break;
+                                }
+                        }
+                    }
+
+                    /* Now determine all prefixes it makes sense to split off from s */
+                    do {
+                        /* Update index */
+                        if (index == 0) {
+                            index = BLOCKSIZE - 1;
+                            block--;
+                        }
+                        else
+                            index--;
+                        /* Check whether we have reached a */
+                        if ((index == a[s].index) && (block == a[s].block))
+                            break;
+
+                        /* If s does not carry ancestral material at current index, we
+                        * might as well postpone the split.
+                        */
+                        if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
+                            /* Check remaining contenders for compatibility and
+                            * maximal prefix.
+                            */
+                            for (i = 0; i < j;) {
+                                if ((((unsigned long)1 << index) & (~g->data[out[i]].ancestral[block])) != 0) {
+                                    /* Sequence i does not contain ancestral material in this
+                                    * site; split s after this site and coalesce with i.
+                                    */
                                     if (ancestral[i]) {
                                         h = copy_genes(g);
                                         if(elements != NULL) {
@@ -5327,35 +5286,81 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                         }
                                         implode_genes(h);
                                         f(h);
-#ifdef ENABLE_VERBOSE
+    #ifdef ENABLE_VERBOSE
                                         if (v) {
                                             printf("Splitting off postfix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                             output_genes_indexed(h, NULL);
                                         }
-#endif
+    #endif
                                     }
-                                    /* Sequence i is no longer a contender */
-                                    out[i] = out[--j];
-                                    ancestral[i] = ancestral[j];
+                                    i++;
                                 }
-                                else
-                                    /* Sequences s and i carry the same ancestral character at
-                                     * this site; postpone split but mark that ancestral
-                                     * material was encountered.
-                                     */
-                                    ancestral[i++] = 1;
+                                else {
+                                    /* We now know that both s and i have ancestral material at
+                                    * this site.
+                                    */
+                                    if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
+                                            & ((unsigned long)1 << index)) != 0) {
+                                        /* Sequence s and i are incompatible at this site; split s
+                                        * after this site and coalesce with i.
+                                        */
+                                        if (ancestral[i]) {
+                                            h = copy_genes(g);
+                                            if(elements != NULL) {
+                                                elements = elist_make();
+                                                elist_safeextend(elements, tmp_elements);
+                                            }
+                                            if(sites != NULL) {
+                                                sites = elist_make();
+                                                elist_safeextend(sites, tmp_sites);
+                                            }
+                                            splitafter_coalescepostfix(h, s, index, block, out[i]);
+                                            if (eventlist != NULL) {
+                                                eventlist = MakeLList();
+                                                e = (Event *)xmalloc(sizeof(Event));
+                                                e->type = RECOMBINATION;
+                                                e->event.r.seq = s;
+                                                e->event.r.pos = index + mulblocksize(block) + 1;
+                                                Enqueue(eventlist, e);
+                                                e = (Event *)xmalloc(sizeof(Event));
+                                                e->type = COALESCENCE;
+                                                e->event.c.s1 = out[i];
+                                                e->event.c.s2 = g->n;
+                                                Enqueue(eventlist, e);
+                                            }
+                                            implode_genes(h);
+                                            f(h);
+    #ifdef ENABLE_VERBOSE
+                                            if (v) {
+                                                printf("Splitting off postfix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
+                                                output_genes_indexed(h, NULL);
+                                            }
+    #endif
+                                        }
+                                        /* Sequence i is no longer a contender */
+                                        out[i] = out[--j];
+                                        ancestral[i] = ancestral[j];
+                                    }
+                                    else
+                                        /* Sequences s and i carry the same ancestral character at
+                                        * this site; postpone split but mark that ancestral
+                                        * material was encountered.
+                                        */
+                                        ancestral[i++] = 1;
+                                }
                             }
                         }
-                    }
-                    else
-                        /* Check for ancestral material in remaining contenders */
-                        for (i = 0; i < j; i++)
-                            ancestral[i] = ancestral[i] ||
-                                           (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
-                    /* Continue until we have eliminated all contenders */
-                } while (j > 0);
+                        else
+                            /* Check for ancestral material in remaining contenders */
+                            for (i = 0; i < j; i++)
+                                ancestral[i] = ancestral[i] ||
+                                            (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
+                        /* Continue until we have eliminated all contenders */
+                    } while (j > 0);
+                }
             }
         }
+    }
 
     /* Clean up */
     free(out);
