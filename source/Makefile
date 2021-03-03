@@ -104,7 +104,7 @@ arg.o: arg.c arg.h llist.h gene.h common.h bitfunctions.h
 
 mystring.o: mystring.c mystring.h llist.h
 
-kwarg: kwarg.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
+kwarg: kwarg.o gene.o bounds.o common.o exact.o llist.o elist.o hashtable.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
 simplify: simplify.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
@@ -112,7 +112,7 @@ flip: flip.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfun
 
 beagle.o: beagle.c gene.h bounds.h common.h exact.h Makefile
 
-kwarg.o: kwarg.c gene.h bounds.h exact.h common.h backtrack.h Makefile
+kwarg.o: kwarg.c gene.h bounds.h common.h exact.h backtrack.h Makefile
 
 simplify.o: simplify.c gene.h bounds.h exact.h common.h backtrack.h Makefile
 

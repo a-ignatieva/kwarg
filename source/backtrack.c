@@ -129,7 +129,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     free_genes(g);
                     g = NULL;
                 }
-                
+            
                 switch(e->type){
                     case SWAP:
                         /* Sanity check - all SWAPs should be handled under

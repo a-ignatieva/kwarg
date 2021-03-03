@@ -4127,7 +4127,7 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
  * prefix. It reflects the prefix being coalesced with some other
  * sequence in which it is subsumed.
  */
-void split_removeprefix(Genes *g, int a, int index, int block)
+int split_removeprefix(Genes *g, int a, int index, int block)
 {
     unsigned long filter;
     int blocks = divblocksize(g->length - 1) + 1;
@@ -4167,13 +4167,15 @@ void split_removeprefix(Genes *g, int a, int index, int block)
     
     free_genes(h);
     
+    return b;
+    
 }
 
 /* Split sequence a before site given by index and block and remove
  * postfix. It reflects the postfix being coalesced with some other
  * sequence in which it is subsumed.
  */
-void split_removepostfix(Genes *g, int a, int index, int block)
+int split_removepostfix(Genes *g, int a, int index, int block)
 {
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
@@ -4211,6 +4213,8 @@ void split_removepostfix(Genes *g, int a, int index, int block)
     }
     
     free_genes(h);
+    
+    return b;
 }
 
 /* Count the number of sites carrying ancestral material in
@@ -4528,8 +4532,7 @@ Index *maximumsubsumedprefixs(Genes *g)
             for (j = 0; j < g->n; j++)
                 if (out[j] == -1) {
                     /* Sequence j is still a contender */
-                    k = lsb(((g->data[a].type[i] ^ g->data[j].type[i])
-                             & g->data[a].ancestral[i])
+                    k = lsb(((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i])
                             | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]));
                     if (k >= 0)
                         /* But not anymore */
@@ -4746,27 +4749,31 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
             sites = elist_make();
             elist_safeextend(sites, tmp_sites);
         }
-        split_removeprefix(h, s, a[s].index, a[s].block);
-        if (eventlist != NULL) {
-            eventlist = MakeLList();
-            e = (Event *)xmalloc(sizeof(Event));
-            e->type = RECOMBINATION;
-            e->event.r.seq = s;
-            e->event.r.pos = a[s].index + mulblocksize(a[s].block);
-            Enqueue(eventlist, e);
-            e = (Event *)xmalloc(sizeof(Event));
-            e->type = SWAP;
-            e->event.swap.s1 = s;
-            e->event.swap.s2 = g->n;
-            Enqueue(eventlist, e);
-            e = (Event *)xmalloc(sizeof(Event));
-            e->type = COALESCENCE;
-            e->event.c.s1 = -1;
-            e->event.c.s2 = g->n;
-            Enqueue(eventlist, e);
+        if(split_removeprefix(h, s, a[s].index, a[s].block) != -1){
+            if (eventlist != NULL) {
+                eventlist = MakeLList();
+                e = (Event *)xmalloc(sizeof(Event));
+                e->type = RECOMBINATION;
+                e->event.r.seq = s;
+                e->event.r.pos = a[s].index + mulblocksize(a[s].block);
+                Enqueue(eventlist, e);
+                e = (Event *)xmalloc(sizeof(Event));
+                e->type = SWAP;
+                e->event.swap.s1 = s;
+                e->event.swap.s2 = g->n;
+                Enqueue(eventlist, e);
+                e = (Event *)xmalloc(sizeof(Event));
+                e->type = COALESCENCE;
+                e->event.c.s1 = -1;
+                e->event.c.s2 = g->n;
+                Enqueue(eventlist, e);
+            }
+            implode_genes(h);
+            f(h);
         }
-        implode_genes(h);
-        f(h);
+        else {
+            free_genes(h);
+        }
 
 #ifdef ENABLE_VERBOSE
         if (v) {
@@ -5090,22 +5097,26 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                 sites = elist_make();
                 elist_safeextend(sites, tmp_sites);
             }
-            split_removepostfix(h, s, b[s].index, b[s].block);
-            if (eventlist != NULL) {
-                eventlist = MakeLList();
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = RECOMBINATION;
-                e->event.r.seq = s;
-                e->event.r.pos = b[s].index + mulblocksize(b[s].block);
-                Enqueue(eventlist, e);
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = COALESCENCE;
-                e->event.c.s1 = -1;
-                e->event.c.s2 = g->n;
-                Enqueue(eventlist, e);
+            if(split_removepostfix(h, s, b[s].index, b[s].block) != -1) {
+                if (eventlist != NULL) {
+                    eventlist = MakeLList();
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = RECOMBINATION;
+                    e->event.r.seq = s;
+                    e->event.r.pos = b[s].index + mulblocksize(b[s].block);
+                    Enqueue(eventlist, e);
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = COALESCENCE;
+                    e->event.c.s1 = -1;
+                    e->event.c.s2 = g->n;
+                    Enqueue(eventlist, e);
+                }
+                implode_genes(h);
+                f(h);
             }
-            implode_genes(h);
-            f(h);
+            else {
+                free_genes(h);
+            }
 #ifdef ENABLE_VERBOSE
             if (v) {
                 printf("Splitting maximum subsumed postfix off sequence %d at %d\n", s,
@@ -6118,27 +6129,31 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                     elist_safeextend(sites, tmp_sites);
                 }
                 _split(h, i, leftindex, leftblock);
-                split_removeprefix(h, g->n, modblocksize(right), divblocksize(right));
-                if (eventlist != NULL) {
-                    eventlist = MakeLList();
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = RECOMBINATION;
-                    e->event.r.seq = i;
-                    e->event.r.pos = left;
-                    Enqueue(eventlist, e);
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = RECOMBINATION;
-                    e->event.r.seq = g->n;
-                    e->event.r.pos = right;
-                    Enqueue(eventlist, e);
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = -1;
-                    e->event.c.s2 = g->n;
-                    Enqueue(eventlist, e);
+                if(split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1){
+                    if (eventlist != NULL) {
+                        eventlist = MakeLList();
+                        e = (Event *)xmalloc(sizeof(Event));
+                        e->type = RECOMBINATION;
+                        e->event.r.seq = i;
+                        e->event.r.pos = left;
+                        Enqueue(eventlist, e);
+                        e = (Event *)xmalloc(sizeof(Event));
+                        e->type = RECOMBINATION;
+                        e->event.r.seq = g->n;
+                        e->event.r.pos = right;
+                        Enqueue(eventlist, e);
+                        e = (Event *)xmalloc(sizeof(Event));
+                        e->type = COALESCENCE;
+                        e->event.c.s1 = -1;
+                        e->event.c.s2 = g->n;
+                        Enqueue(eventlist, e);
+                    }
+                    implode_genes(h);
+                    f(h);
                 }
-                implode_genes(h);
-                f(h);
+                else{
+                    free_genes(h);
+                }
 #ifdef ENABLE_VERBOSE
                 if (v > 1) {
                     printf("Splitting off maximum subsumed infix of sequence %d between %d and %d\n", i, left, right);
