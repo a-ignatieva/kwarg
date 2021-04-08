@@ -40,7 +40,7 @@ extern int no_events;
 extern int gc_enabled;
 extern double Temp;
 extern double r_seed;
-extern int rec_max;
+extern int rec_max, rm_max;
 extern long int x2seed;
 extern long int xseed;
 extern int counter;

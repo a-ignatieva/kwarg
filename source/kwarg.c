@@ -56,6 +56,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-Z[x]", "Sets the random seed z (only one run is made in this case).", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
+    print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent needed for the input dataset (solutions with more than x recurrent mutations will be abandoned).", 70, -1);
     print_option(f, "-s", "Turns off the header row of the results table.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
@@ -275,6 +276,7 @@ int main(int argc, char **argv)
     char *endptr;
     errno = 0;
     reference = -1;
+    rm_max = INT_MAX;
     
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
@@ -288,7 +290,7 @@ int main(int argc, char **argv)
     #endif
     
     /* Analyse command line options */
-    #define KWARG_OPTIONS "S:M:R:C:T:V:X:b::d::g::j::t::D::G::J::Iv:iekofaZ:Q:sL:nhH?"
+    #define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekofaZ:Q:sL:nhH?"
     
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0){
@@ -636,6 +638,13 @@ int main(int argc, char **argv)
                 rec_max = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
+                    exit(1);
+                }
+                break;
+            case 'Y':
+                rm_max = strtol(optarg, &endptr, 10);
+                if(errno != 0 || *endptr != '\0') {
+                    fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
                     exit(1);
                 }
                 break;

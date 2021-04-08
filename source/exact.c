@@ -1768,6 +1768,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     set_verbose(0);
     #endif
     
+    if(rm_max < INT_MAX) {
+        update_lookup(lookup, 0, rm_max);
+    }
     
     /* Create working copy of g */
     g = copy_genes(g);
