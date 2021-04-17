@@ -489,9 +489,9 @@ static void newick_visit(ARG *tree, int node, AnnotatedGenes *a,
       }
 
       /* Recurse on parent node */
-      newick_visit(tree, tree->nodes[node].predecessor.one.target, a,
-		   nodelabels, annotate_edges, generate_id, parts,
-		   parts[node]);
+      if(tree->nodes[node].predecessor.one.target < tree->n) {
+        newick_visit(tree, tree->nodes[node].predecessor.one.target, a, nodelabels, annotate_edges, generate_id, parts, parts[node]);
+      }
     }
   }
   else{
