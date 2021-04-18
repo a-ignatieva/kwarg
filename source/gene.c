@@ -3725,13 +3725,20 @@ int find_safe_coalescence(Genes *g, int a)
 
     /* Determine set of segregating sites */
     for (i = 0; i < blocks; i++) {
-        ancestral = g->data[0].ancestral[i];
-        type = g->data[0].type[i];
-        for (j = 1; j < g->n; j++) {
-            segregating[i] |= ancestral & g->data[j].ancestral[i]
-                              & (type ^ g->data[j].type[i]);
-            type |= g->data[j].type[i];
-            ancestral |= g->data[j].ancestral[i];
+        if(!gene_knownancestor) {
+            ancestral = g->data[0].ancestral[i];
+            type = g->data[0].type[i];
+            for (j = 1; j < g->n; j++) {
+                segregating[i] |= ancestral & g->data[j].ancestral[i] & (type ^ g->data[j].type[i]);
+                type |= g->data[j].type[i];
+                ancestral |= g->data[j].ancestral[i];
+            }
+        }
+        else {
+            // If know root state then just looking for sites that have at least one 1
+            for(j = 0; j < g->n; j++) {
+                segregating[i] |= g->data[j].ancestral[i] & g->data[j].type[i];
+            }
         }
     }
 
