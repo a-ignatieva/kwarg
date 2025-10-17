@@ -1,0 +1,16 @@
+digraph ARG {
+  { rank = same; 0; 1; 2; 3; }
+  0 [label="Seq1; 00010010",color=red];
+  4 -> 0 [label="14;10"];
+  1 [label="Seq2; 1001101x",color=red];
+  4 -> 1 [label="*2"];
+  2 [label="Seq3; 11001x01",color=red];
+  5 -> 2 [label="2"];
+  3 [label="Seq4; 01100101",color=red];
+  5 -> 3 [label="7;11;*10"];
+  4 [label="00011011",color=green];
+  6 -> 4 [label="9;13"];
+  5 [label="01001x01",color=green];
+  6 -> 5 [label="3"];
+  6 [label="00001001",color=yellow];
+}

@@ -1,0 +1,64 @@
+Mutation of site 6 in sequence 11
+Mutation of site 7 in sequence 11
+Mutation of site 8 in sequence 11
+Mutation of site 10 in sequence 1
+Mutation of site 14 in sequence 11
+Mutation of site 15 in sequence 5
+Mutation of site 21 in sequence 11
+Mutation of site 25 in sequence 11
+Mutation of site 39 in sequence 4
+Mutation of site 40 in sequence 4
+Mutation of site 41 in sequence 3
+Mutation of site 42 in sequence 6
+Mutation of site 43 in sequence 3
+Coalescing sequences 8 and 9
+Coalescing sequences 8 and 10
+Mutation of site 13 in sequence 8
+Mutation of site 38 in sequence 8
+---->Sequencing error at site 36 in sequence 6
+---->Stretch of sequencing errors spanning 2 sites:
+---->Sequencing error at site 17 in sequence 5
+---->Sequencing error at site 18 in sequence 5
+Mutation of site 17 in sequence 4
+Mutation of site 18 in sequence 4
+Coalescing sequences 3 and 4
+Mutation of site 36 in sequence 3
+---->Sequencing error at site 9 in sequence 1
+---->Sequencing error at site 3 in sequence 2
+Coalescing sequences 1 and 2
+Mutation of site 19 in sequence 1
+Mutation of site 20 in sequence 1
+Mutation of site 22 in sequence 1
+Mutation of site 23 in sequence 1
+Mutation of site 24 in sequence 1
+Mutation of site 26 in sequence 1
+Mutation of site 27 in sequence 1
+Mutation of site 28 in sequence 1
+Mutation of site 29 in sequence 1
+Coalescing sequences 1 and 3
+Mutation of site 16 in sequence 1
+Mutation of site 37 in sequence 1
+---->Recombination in sequence 5 after site 29; suffix is new sequence 12
+Coalescing sequences 1 and 12
+Mutation of site 31 in sequence 1
+Mutation of site 33 in sequence 1
+Mutation of site 35 in sequence 1
+---->Recombination in sequence 5 after site 3; prefix is new sequence 13
+Coalescing sequences 1 and 13
+Mutation of site 3 in sequence 1
+Coalescing sequences 8 and 5
+Coalescing sequences 1 and 6
+Mutation of site 11 in sequence 8
+Mutation of site 12 in sequence 8
+Mutation of site 30 in sequence 1
+Mutation of site 32 in sequence 1
+Mutation of site 34 in sequence 1
+Coalescing sequences 1 and 7
+Coalescing sequences 8 and 11
+Mutation of site 1 in sequence 8
+Mutation of site 2 in sequence 8
+Mutation of site 4 in sequence 8
+Mutation of site 5 in sequence 8
+Mutation of site 9 in sequence 1
+Coalescing sequences 1 and 8
+Total: 5 sequencing errors, 0 recurrent mutations, 2 recombinations.
