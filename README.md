@@ -95,7 +95,7 @@ mingw32-make all
 ```
 
 # Bug reports and requests
-Please leave a report using the issue tracking system, or email anastasia.ignatieva@warwick.ac.uk
+Please leave a report using the issue tracking system, or email anastasia.ignatieva@stats.ox.ac.uk
 
 # Version history
 
