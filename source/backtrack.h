@@ -10,8 +10,11 @@
 #ifndef BACKTRACK_H
 #define BACKTRACK_H
 
-#include "arg.h"
-#include "gene.h"
+#include "elist.h"
+#include "llist.h"
+
+typedef struct _Genes Genes;
+typedef struct _KwargContext KwargContext;
 
 typedef enum {SUBSTITUTION, COALESCENCE, RECOMBINATION, REMOVE,
     COLLAPSE, SWAP, LOOKUP, SEFLIP, RMFLIP} EventType;
@@ -58,9 +61,11 @@ typedef struct _HistoryFragment {
   Action action;
 } HistoryFragment;
 
+#include "arg.h"
+
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif
-ARG *eventlist2history(AnnotatedGenes *a, FILE *output);
+ARG *eventlist2history(AnnotatedGenes *a, FILE *output, KwargContext *ctx);
 
 #endif

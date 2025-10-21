@@ -79,19 +79,17 @@ static int _unbiased_random(int n)
  * and the number of times this has been encountered is maintained in
  * _ms_w. Return value indicates whether the value should be selected.
  */
-static int _ms_w = 0;
-static double _ms_v = DBL_MAX;
-static int _minimum_select(double a)
+static int _minimum_select(double a, KwargContext *ctx)
 {
-    if (a == _ms_v)
+    if (a == ctx->_ms_v)
         /* The two values are equal - choose one at random and increment
          * number of times we have seen this value.
          */
-        return (_unbiased_random(++_ms_w) == 0);
-    else if (a < _ms_v){
+        return (_unbiased_random(++ctx->_ms_w) == 0);
+    else if (a < ctx->_ms_v){
         /* The value of a is new minimum - reset count and report this */
-        _ms_v = a;
-        _ms_w = 1;
+        ctx->_ms_v = a;
+        ctx->_ms_w = 1;
         return 1;
     }
     
@@ -107,30 +105,28 @@ static int _minimum_select(double a)
  * selection). Return value indicates whether the value should be
  * selected.
  */
-static double _rs_w = -DBL_MAX + 1;
-static int _rs_n = 0;
-static int _random_select(double a)
+static int _random_select(double a, KwargContext *ctx)
 {
     /* Check for non-positive values */
     if (a <= 0){
-        if (_rs_w < a){
-            _rs_w = a;
-            _rs_n = 1;
+        if (ctx->_rs_w < a){
+            ctx->_rs_w = a;
+            ctx->_rs_n = 1;
             return 1;
         }
-        else if (_rs_w == a)
-            return (_unbiased_random(++_rs_n) == 0);
+        else if (ctx->_rs_w == a)
+            return (_unbiased_random(++ctx->_rs_n) == 0);
         else
             return 0;
     }
     
     /* Update _rs_w and perform random selection */
-    if (_rs_w < 0)
-        _rs_w = a;
+    if (ctx->_rs_w < 0)
+        ctx->_rs_w = a;
     else
-        _rs_w += a;
+        ctx->_rs_w += a;
     
-    return (a * XRAND_MAX > _rs_w * x2random());
+    return (a * XRAND_MAX > ctx->_rs_w * x2random());
 }
 
 /* Determine whether to select a value according to a scheme where
@@ -141,57 +137,54 @@ static int _random_select(double a)
  * temperature is required to be positive. Return value indicates
  * whether the value should be selected.
  */
-static double _prs_kT = 1;
-static double _prs_Z = 0;
-static double _prs_offset = 0;
-static int _pseudoenergy_random_select(double a)
+static int _pseudoenergy_random_select(double a, KwargContext *ctx)
 {
-    if (_prs_Z == 0){
+    if (ctx->_prs_Z == 0){
         /* First value seen */
         /* Choose offset such that partition function initially is 1 */
-        _prs_offset = a;
-        _prs_Z = 1;
+        ctx->_prs_offset = a;
+        ctx->_prs_Z = 1;
         return 1;
     }
     else{
         /* Include contribution of a in partition function and update
          * offset if necessary.
          */
-        if (a < _prs_offset){
+        if (a < ctx->_prs_offset){
             /* It's a good idea to change offset before proceeding */
-            _prs_Z = exp((a - _prs_offset) / _prs_kT) * _prs_Z + 1;
-            _prs_offset = a;
+            ctx->_prs_Z = exp((a - ctx->_prs_offset) / ctx->_prs_kT) * ctx->_prs_Z + 1;
+            ctx->_prs_offset = a;
         }
         else
             /* Update partition function */
-            _prs_Z += exp((_prs_offset - a) / _prs_kT);
+            ctx->_prs_Z += exp((ctx->_prs_offset - a) / ctx->_prs_kT);
         /* Check whether we should change the offset after the fact */
-        if (_prs_Z > 2){
+        if (ctx->_prs_Z > 2){
             /* By the precheck, inclusion of a can at most increase the
              * value of the partition function by 1 so reducing by a factor
              * of e should be sufficient.
              */
-            _prs_offset -= _prs_kT;
-            _prs_Z = _prs_Z / M_E;
+            ctx->_prs_offset -= ctx->_prs_kT;
+            ctx->_prs_Z = ctx->_prs_Z / M_E;
         }
     }
     
     /* Determine whether to choose a */
-    if (exp((_prs_offset - a) / _prs_kT) * XRAND_MAX < x2random() * _prs_Z)
+    if (exp((ctx->_prs_offset - a) / ctx->_prs_kT) * XRAND_MAX < x2random() * ctx->_prs_Z)
         return 0;
     else
         return 1;
 }
 
 /* Reset variables for the various selection functions */
-static void _reset_selections()
+static void _reset_selections(KwargContext *ctx)
 {
-    _ms_w = 0;
-    _ms_v = DBL_MAX;
-    _rs_w = -DBL_MAX + 1;
-    _rs_n = 0;
-    _prs_Z = 0;
-    _prs_offset = 0;
+    ctx->_ms_w = 0;
+    ctx->_ms_v = DBL_MAX;
+    ctx->_rs_w = -DBL_MAX + 1;
+    ctx->_rs_n = 0;
+    ctx->_prs_Z = 0;
+    ctx->_prs_offset = 0;
 }
 
 /* Parse a floating point option argument and store it in value.
@@ -239,17 +232,20 @@ int main(int argc, char **argv)
 {
     Genes *g, *h;
     AnnotatedGenes *a;
+    KwargContext ctx;
+    
     int i, j = 0, k = 0, l = 0, m = 0, t = 0,
     head = 1,
     silent = 0,
     intervals = 0,
     multruns = 0,
     costs_in = 0;
+    
     double n;
     Gene_Format format = GENE_ANY;
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *print_progress = stdout;
-    int (*select)(double) = _random_select;
+    int (*select)(double, KwargContext *) = _random_select;
     FILE *fp;
     LList *history_files = MakeLList(),
     *dot_files = MakeLList(),
@@ -264,19 +260,73 @@ int main(int argc, char **argv)
     int edgelabel = 0;
     int generate_id = 0;
     int ontheflyselection = 0;
-    gc_enabled = 0;
+    ctx.gc_enabled = 0;
     Event *e;
     LList *tmp;
-    r_seed = 0;
-    rec_max = INT_MAX;
     char *token;
 //     int gc_ind = 0;
     double timer;
     clock_t tic, toc;
     char *endptr;
     errno = 0;
-    reference = -1;
-    rm_max = INT_MAX;
+    int reference = -1;
+    
+    // Initialization from 'common.h' externs and kwarg.c logic
+    ctx.eventlist = NULL; // Will be created later if needed
+    ctx.elements = NULL;
+    ctx.sites = NULL;
+    ctx.lookup = NULL;
+    ctx.seq_numbering = 0;
+    ctx.gc_enabled = 0;
+    ctx.rec_max = INT_MAX;
+    ctx.rm_max = INT_MAX;
+    ctx._greedy_functioncalls = NULL;
+    ctx._greedy_beaglereusable = NULL;
+    
+    counter = 0;
+    r_seed = 0;
+    xseed = 0;
+    x2seed = 0;
+
+    // Default cost values from kwarg.c
+    ctx.se_cost = 0.5;
+    ctx.rm_cost = 0.9;
+    ctx.r_cost = 1.0;
+    ctx.rr_cost = 2.0;
+    
+    // Default temperature from kwarg.c
+    ctx.Temp = 30.0;
+
+    #ifdef ENABLE_VERBOSE
+        ctx.howverbose = 1;
+    #else
+        ctx.howverbose = 0;
+    #endif
+
+    // Initialization of static selection variables from kwarg.c
+    ctx._ms_w = 0;
+    ctx._ms_v = DBL_MAX;
+    ctx._rs_w = -DBL_MAX + 1;
+    ctx._rs_n = 0;
+    ctx._prs_kT = 1.0; // From _pseudoenergy_random_select logic
+    ctx._prs_Z = 0;
+    ctx._prs_offset = 0;
+
+    // Initialization of static variables from exact.c
+    ctx.exact_randomise = 0;
+    ctx.reusable = 0;
+    ctx.skip_lookup = 0;
+    ctx._coalesce_compatibleandentangled_states = NULL;
+    ctx._greedy_rmin = -1;
+    ctx._greedy_currentstate = NULL;
+    ctx._am = 0.0;
+    ctx._choice_fixed = 0;
+    ctx._greedy_choice = NULL;
+    // ctx.ac doesn't need a default, it's set before use
+    ctx.sc_min = DBL_MAX;
+    ctx.sc_max = 0;
+    ctx._lb = 0.0;
+    ctx._predecessors = NULL;
     
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
@@ -391,12 +441,12 @@ int main(int argc, char **argv)
                 }
                 break;
 			case 'V':
-                howverbose = strtol(optarg, &endptr, 10);
+                ctx.howverbose = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                     exit(1);
                 }
-                if(howverbose > 2 && howverbose < 0) {
+                if(ctx.howverbose > 2 && ctx.howverbose < 0) {
                     fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                     exit(1);
                 }
@@ -635,14 +685,14 @@ int main(int argc, char **argv)
                 }
                 break;
             case 'X':
-                rec_max = strtol(optarg, &endptr, 10);
+                ctx.rec_max = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
                     exit(1);
                 }
                 break;
             case 'Y':
-                rm_max = strtol(optarg, &endptr, 10);
+                ctx.rm_max = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
                     exit(1);
@@ -717,7 +767,7 @@ int main(int argc, char **argv)
         || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)) {
-        eventlist = MakeLList();
+        ctx.eventlist = MakeLList();
         multruns = 0;
 	cost_in = 1;
 	T_in = 1;
@@ -735,13 +785,13 @@ int main(int argc, char **argv)
         rm_costs[0] = (rm_costs[0] !=0 ? rm_costs[0] : 0.9);
         r_costs[0] = (r_costs[0] !=0 ? r_costs[0] : 1.0);
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
-        if(howverbose > 0) {
+        if(ctx.howverbose > 0) {
             head = 0;
         }
     }
     else if(cost_in > 0) {
         if(multruns > 0 || cost_in > 1) {
-            howverbose = 0;
+            ctx.howverbose = 0;
         }
         for(t = 0; t < cost_in; t++) {
             se_costs[t] = (se_costs[t] !=0 ? se_costs[t] : 0.5);
@@ -751,7 +801,7 @@ int main(int argc, char **argv)
         }
     }
     else {
-        howverbose = 0;
+        ctx.howverbose = 0;
         cost_in = 13;
         double template1[13] = {-1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 1};
         double template2[13] = {-1, 1.01, 0.91, 0.81, 0.71, 0.61, 0.51, 0.41, 0.31, 0.21, 0.11, 0.02, 1.1};
@@ -780,22 +830,22 @@ int main(int argc, char **argv)
     
     // Create the lookup array if will have multiple runs
     if(multruns > 0 || cost_in > 1){  
-        if(rec_max == INT_MAX) {
-            rec_max = 1000; // TODO What should this be
+        if(ctx.rec_max == INT_MAX) {
+            ctx.rec_max = 1000; // TODO What should this be
         }
         // Will store SE + RM in a lookup list with index = number of recombinations
-        lookup = elist_make();
-        for(i = 0; i <= rec_max; i++) {
-            elist_append(lookup, (void *)INT_MAX);
+        ctx.lookup = elist_make();
+        for(i = 0; i <= ctx.rec_max; i++) {
+            elist_append(ctx.lookup, (void *)INT_MAX);
         }
         // We need 0 se/rm for rec_max recombinations
-        elist_change(lookup, rec_max, (void *)0);
+        elist_change(ctx.lookup, ctx.rec_max, (void *)0);
     }
     
     for(l = 0; l < T_in; l++) {
         
-        Temp = T_array[l];
-        if(Temp == -1) {
+        ctx.Temp = T_array[l];
+        if(ctx.Temp == -1) {
             select = _minimum_select;
         }
         else {
@@ -804,11 +854,11 @@ int main(int argc, char **argv)
         
         for(k = 0; k < cost_in; k++) {
             
-            se_cost = se_costs[k];
-            rm_cost = rm_costs[k];
-            r_cost = r_costs[k];
-            rr_cost = rr_costs[k];
-            if(se_cost == -1 && rm_cost == -1 && r_cost == -1 && rr_cost == -1) {
+            ctx.se_cost = se_costs[k];
+            ctx.rm_cost = rm_costs[k];
+            ctx.r_cost = r_costs[k];
+            ctx.rr_cost = rr_costs[k];
+            if(ctx.se_cost == -1 && ctx.rm_cost == -1 && ctx.r_cost == -1 && ctx.rr_cost == -1) {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
             }
@@ -822,27 +872,27 @@ int main(int argc, char **argv)
                 
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
-                seq_numbering = h->n;
-                elements = elist_make();
-                sites = elist_make();
+                ctx.seq_numbering = h->n;
+                ctx.elements = elist_make();
+                ctx.sites = elist_make();
                 // Initialise list of sequences
                 if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
                     for(i=0; i < h->n; i++) {
-                        elist_append(elements, (void *)(i+1));
+                        elist_append(ctx.elements, (void *)(i+1));
                     }
                 } else {
                     for(i=0; i < h->n; i++) {
-                        elist_append(elements, (void *)i);
+                        elist_append(ctx.elements, (void *)i);
                     }
                 }
                 // Initialise the list of sites
                 for(i=0; i < h->length; i++) {
-                    elist_append(sites, (void *)i);
+                    elist_append(ctx.sites, (void *)i);
                 }
                 
                 // Get a history
                 tic = clock();
-                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection);
+                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection, reference, &ctx);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
@@ -850,10 +900,10 @@ int main(int argc, char **argv)
                 
                 // Tidy up for the next run
                 free_genes(h);
-                elist_destroy(elements);
-                elements = NULL;
-                elist_destroy(sites);
-                sites = NULL;
+                elist_destroy(ctx.elements);
+                ctx.elements = NULL;
+                elist_destroy(ctx.sites);
+                ctx.sites = NULL;
                 r_seed = 0;
                 
             }
@@ -878,10 +928,10 @@ int main(int argc, char **argv)
                 /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp);
+            arg = eventlist2history(a, fp, &ctx);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL);
+            arg = eventlist2history(a, NULL, &ctx);
         if (arg != NULL){
             /* Output ARG in dot format */
             while ((fp = (FILE *)Pop(dot_files)) != NULL){
@@ -961,26 +1011,26 @@ int main(int argc, char **argv)
         } 
     
     
-        if (eventlist != NULL){
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
-            DestroyLList(eventlist);
+        if (ctx.eventlist != NULL){
+            while (Length(ctx.eventlist) > 0)
+                free(Pop(ctx.eventlist));
+            DestroyLList(ctx.eventlist);
         }
     }
     
         
         /* Clean up */
-        if (lookup != NULL){
-            elist_destroy(lookup);
+        if (ctx.lookup != NULL){
+            elist_destroy(ctx.lookup);
         }
         
-        if (_greedy_beaglereusable != NULL) {
-            beagle_deallocate_hashtable(_greedy_beaglereusable);
-            _greedy_beaglereusable = NULL;
+        if (ctx._greedy_beaglereusable != NULL) {
+            beagle_deallocate_hashtable(ctx._greedy_beaglereusable);
+            ctx._greedy_beaglereusable = NULL;
         }
-        if (_greedy_functioncalls != NULL) {
-            hashtable_destroy(_greedy_functioncalls, free, NULL, free);
-            _greedy_functioncalls = NULL;
+        if (ctx._greedy_functioncalls != NULL) {
+            hashtable_destroy(ctx._greedy_functioncalls, free, NULL, free);
+            ctx._greedy_functioncalls = NULL;
         }
         
         DestroyLList(dot_files);

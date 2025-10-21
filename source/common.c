@@ -37,31 +37,15 @@ LList *representativeness = NULL;
 LListCounter *representativeness_counter;
 int **haploblocks = NULL;
 #endif
-double se_cost;
-double rm_cost;
-double r_cost;
-double rr_cost;
-LList *eventlist;
-EList *elements;
-EList *sites;
-EList *lookup;
-int seq_numbering;
-int howverbose = 0;
-int no_events = 0;
-double _recombinations;
-int gc_enabled = 0;
-double Temp = 1;
-double r_seed;
-int rec_max, rm_max;
-int counter = 0;
-int reference = 0;
-HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.
  */
 HashTable *ancestral_state_trace = NULL;
 #endif
+
+double r_seed;
+int counter = 0;
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.
  */
@@ -137,13 +121,10 @@ void initialise_x2random(double seed)
 {
 #ifndef DEBUG
     if(seed == 0) {
-        r_seed = (double)time(NULL) + (double)xrandom();
-    }
-    else {
-        r_seed = seed;
+        seed = (double)time(NULL) + (double)xrandom();
     }
 
-  srandom(r_seed);
+  srandom(seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);

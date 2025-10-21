@@ -4,11 +4,10 @@
 #define _COMMON_H
 
 #include "llist.h"
-#include "gene.h"
 #include "arg.h"
-/* Function prototypes; a brief explanation of each function should be
- * provided prior to its implementation in common.c.
- */
+
+typedef struct _HashTable HashTable;
+
 #ifdef ENABLE_VERBOSE
 int verbose();
 void set_verbose(int v);
@@ -20,32 +19,17 @@ typedef struct _SuperColumn {
   int right;
 } SuperColumn;
 
+extern double r_seed;
+extern long int x2seed;
+extern long int xseed;
+extern int counter;
+
 extern LList *representativeness;
 extern LListCounter *representativeness_counter;
 extern int **haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
-extern LList *eventlist;
-extern EList *elements;
-extern EList *sites;
-extern EList *lookup;
-extern int seq_numbering;
-extern double se_cost;
-extern double rm_cost;
-extern double r_cost;
-extern double rr_cost;
-extern int howverbose;
-extern double _recombinations;
-extern int no_events;
-extern int gc_enabled;
-extern double Temp;
-extern double r_seed;
-extern int rec_max, rm_max;
-extern long int x2seed;
-extern long int xseed;
-extern int counter;
-extern int reference;
-extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
+
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif

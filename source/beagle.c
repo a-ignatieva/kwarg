@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 {
     Genes *g;
     AnnotatedGenes *a;
+    KwargContext ctx;
     int i, j,
     print_progress = 0,
     lower = -1,
@@ -89,8 +90,41 @@ int main(int argc, char **argv)
     #endif
     gene_knownancestor = 0;
     
-    /* Initialise random number generator */
-    initialise_xrandom();
+    r_seed = 0;
+    xseed = 0;
+    x2seed = 0;
+    counter = 0;
+    
+    ctx.eventlist = NULL;
+    ctx.elements = NULL;
+    ctx.sites = NULL;
+    ctx.lookup = NULL;
+    ctx.seq_numbering = 0;
+    ctx.se_cost = 0.0;
+    ctx.rm_cost = 0.0;
+    ctx.r_cost = 0.0;
+    ctx.rr_cost = 0.0;
+    ctx.howverbose = 0;
+    ctx._recombinations = 0;
+    ctx.no_events = 0;
+    ctx.gc_enabled = 0;
+    ctx.Temp = 0;
+    ctx.rec_max = INT_MAX;
+    ctx.rm_max = INT_MAX;
+    ctx._greedy_functioncalls = NULL;
+    ctx._greedy_beaglereusable = NULL;
+    ctx.exact_randomise = 0;
+    ctx.reusable = 0;
+    ctx.skip_lookup = 0;
+    ctx._coalesce_compatibleandentangled_states = NULL;
+    ctx._greedy_rmin = 0;
+    ctx._greedy_hk = 0;
+    ctx._greedy_currentstate = NULL;
+    ctx._am = 0;
+    ctx._seq = 0;
+    ctx._len = 0;
+    ctx._choice_fixed = 0;
+    ctx._greedy_choice = NULL;
     
     #ifdef ENABLE_VERBOSE
     set_verbose(1);
@@ -377,7 +411,7 @@ int main(int argc, char **argv)
                 }
                 break;
             case 'r':
-                exact_randomise = 1;
+                ctx.exact_randomise = 1;
                 break;
             case 'c':
                 /* Was a bound specified? */
@@ -395,6 +429,9 @@ int main(int argc, char **argv)
                 break;
         }
     }
+    
+    /* Initialise random number generator */
+    initialise_xrandom();
     
     /* Read data */
     if (argc > optind){
@@ -418,12 +455,12 @@ int main(int argc, char **argv)
     
     /* Set up structures for computation */
     if (comprehensive_bound >= 0)
-        t = beagle_allocate_hashtable(g, -1);
+        t = beagle_allocate_hashtable(g, -1, &ctx);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0)
         || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
-        eventlist = MakeLList();
+        ctx.eventlist = MakeLList();
     #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL){
         haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
@@ -439,19 +476,19 @@ int main(int argc, char **argv)
     if ((lower >= 0) || (upper >= 0)){
         if (comprehensive_bound >= 0){
             i = beagle_reusable_bounded(g, (print_progress ? stdout : NULL), lower,
-                                        upper, t);
+                                        upper, t, &ctx);
             comprehensive_bound += i;
         }
         else
-            i = beagle_bounded(g, (print_progress ? stdout : NULL), lower, upper);
+            i = beagle_bounded(g, (print_progress ? stdout : NULL), lower, upper, &ctx);
     }
     else{
         if (comprehensive_bound >= 0){
-            i = beagle_reusable(g, (print_progress ? stdout : NULL), t);
+            i = beagle_reusable(g, (print_progress ? stdout : NULL), t, &ctx);
             comprehensive_bound += i;
         }
         else
-            i = beagle(g, (print_progress ? stdout : NULL));
+            i = beagle(g, (print_progress ? stdout : NULL), &ctx);
     }
     
     if (!silent){
@@ -485,7 +522,7 @@ int main(int argc, char **argv)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)){
         if (comprehensive_bound >= 0){
-            eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t);
+            ctx.eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t, &ctx);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL){
@@ -498,10 +535,10 @@ int main(int argc, char **argv)
                 /* Only remember last ARG constructed (they should all be the same) */
                 if (arg != NULL)
                     arg_destroy(arg);
-                arg = eventlist2history(a, fp);
+                arg = eventlist2history(a, fp, &ctx);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL);
+            arg = eventlist2history(a, NULL, &ctx);
         if (arg != NULL){
             /* Output ARG in dot format */
             while ((fp = (FILE *)Pop(dot_files)) != NULL){
@@ -579,10 +616,10 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (eventlist != NULL){
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
-            DestroyLList(eventlist);
+        if (ctx.eventlist != NULL){
+            while (Length(ctx.eventlist) > 0)
+                free(Pop(ctx.eventlist));
+            DestroyLList(ctx.eventlist);
         }
         }
         
@@ -601,7 +638,6 @@ int main(int argc, char **argv)
                               (void (*)(void *))free_packedgenes, NULL,
                               (void (*)(void *))free);
         #endif
-            
             
         free_annotatedgenes(a);
         

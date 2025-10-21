@@ -37,8 +37,9 @@ int main(int argc, char **argv)
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *fp;
     fp = stdout;
+    KwargContext ctx;
     
-    eventlist = MakeLList();
+    ctx.eventlist = MakeLList();
     
     /* Analyse command line options */
     #define SIMPLIFY_OPTIONS "b::kofanQhH?"
@@ -111,27 +112,27 @@ int main(int argc, char **argv)
     
 
     //Initialise the elements array (this will track the number of recombinations which each of the sequences has undergone)
-    elements = elist_make();
-    sites = elist_make();
+    ctx.elements = elist_make();
+    ctx.sites = elist_make();
     if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
         for(i=0; i < g->n; i++) {
-            elist_append(elements, (void *)(i+1));
+            elist_append(ctx.elements, (void *)(i+1));
         }
     } else {
         for(i=0; i < g->n; i++) {
-            elist_append(elements, (void *)i);
+            elist_append(ctx.elements, (void *)i);
         }
     }
     // Initialise the list of sites
     for(i=0; i < g->length; i++) {
-        elist_append(sites, (void *)i);
+        elist_append(ctx.sites, (void *)i);
     }
     
     // Print stats for input dataset
 //         printf("Input dataset has %d sequences and %d sites\n", g->n, g->length);
     printf("Input dataset: %d sequences, %d sites\n", g->n, g->length);
     
-    implode_genes(g);
+    implode_genes(g, &ctx);
     
     // Print stats for reduced dataset
 //         printf("Reduced dataset has %d sequences and %d sites\n", g->n, g->length);
@@ -140,19 +141,18 @@ int main(int argc, char **argv)
     output_genes(g, fp, NULL);
    
     printf("Sequences:\n");
-    print_elist(elements, NULL);
+    print_elist(ctx.elements, NULL);
     
     printf("Sites:\n");
-    print_elist(sites, NULL);
+    print_elist(ctx.sites, NULL);
 
     // Tidying
-    if (eventlist != NULL){
-        while (Length(eventlist) > 0)
-            free(Pop(eventlist));
-        DestroyLList(eventlist);
+    if (ctx.eventlist != NULL){
+        while (Length(ctx.eventlist) > 0)
+            free(Pop(ctx.eventlist));
+        DestroyLList(ctx.eventlist);
     }
     free_annotatedgenes(a);
-
     
     return 0;
 }

@@ -14,9 +14,10 @@
 #include <limits.h>
 #include <time.h>
 
+#include "common.h"
 #include "hashtable.h"
 #include "elist.h"
-#include "common.h"
+
 
 /* Find the largest integer m with m * m <= n */
 static unsigned long intsqrt(unsigned long n)

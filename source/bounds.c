@@ -44,7 +44,7 @@ static int _intmax(int a, int b)
 
 #ifdef ENABLE_VERBOSE
 /* yun is just a wrapper setting up history reconstruction information */
-static int _yun_recursion(Genes *g, int best, int *history, int level);
+static int _yun_recursion(Genes *g, int best, int *history, int level, KwargContext *ctx);
 int yun(Genes *g, int best)
 {
     int i, j, n, v = verbose(),
@@ -67,7 +67,7 @@ int yun(Genes *g, int best)
                    history[2 * i], history[2 * i + 1]);
             j += history[2 * i + 1];
             remove_gene(h, history[2 * i]);
-            force_safeevents(h);
+            force_safeevents(h, ctx);
             output_genes_indexed(h, NULL);
         }
         printf("\n");
@@ -81,13 +81,13 @@ int yun(Genes *g, int best)
 /* The real upper bound computation is carried out by yun_recursion,
  * finding the upper bound based on Yun's technique.
  */
-static int _yun_recursion(Genes *g, int best, int *history, int level)
+static int _yun_recursion(Genes *g, int best, int *history, int level, KwargContext *ctx)
 #else
 /* Compute an upper bound on the number of recombinations required for the
  * data set in g, if this might be smaller than best; otherwise, just
  * return best.
  */
-int yun(Genes *g, int best)
+int yun(Genes *g, int best, KwargContext *ctx)
 #endif
 {
     int i, n;
@@ -103,7 +103,7 @@ int yun(Genes *g, int best)
          */
         return 0;
     
-    n = hudson_kaplan_genes(g);
+    n = hudson_kaplan_genes(g, ctx);
     if (best <= n)
         /* This branch cannot surpass current best branch */
         return best;
@@ -132,7 +132,7 @@ int yun(Genes *g, int best)
         #endif
         h = copy_allbutone(g, chops[i][1]);
         /* Reduce data as much as possible */
-        force_safeevents(h);
+        force_safeevents(h, ctx);
         #ifdef ENABLE_VERBOSE
         y = _yun_recursion(h, best - chops[i][0], history, level + 1);
         if (chops[i][0] + y < best){
@@ -141,7 +141,7 @@ int yun(Genes *g, int best)
             history[2 * level + 1] = chops[i][0];
         }
         #else
-        best = _intmin(best, chops[i][0] + yun(h, best - chops[i][0]));
+        best = _intmin(best, chops[i][0] + yun(h, best - chops[i][0], ctx));
         #endif
         
         free_genes(h);
@@ -157,7 +157,7 @@ int yun(Genes *g, int best)
  * global bound by composite method, and free memory used by matrix of
  * local bounds.
  */
-static int _global_from_local(Sites *s, int **(*bound)(Sites *s))
+static int _global_from_local(Sites *s, int **(*bound)(Sites *s), KwargContext *ctx)
 {
     int **B = bound(s);
     int i, n;
@@ -165,7 +165,7 @@ static int _global_from_local(Sites *s, int **(*bound)(Sites *s))
     if (B == NULL)
         return 0;
     
-    n = local2global(s->length - 1, B);
+    n = local2global(s->length - 1, B, ctx);
     for (i = 0; i < s->length - 1; i++)
         free(B[i]);
     free(B);
@@ -176,10 +176,10 @@ static int _global_from_local(Sites *s, int **(*bound)(Sites *s))
 /* Compute global bound, first converting g to Sites representaion and
  * then invoking global_from_local.
  */
-static int _global_from_local_genes(Genes *g, int **(*bound)(Sites *s))
+static int _global_from_local_genes(Genes *g, int **(*bound)(Sites *s), KwargContext *ctx)
 {
     Sites *s = genes2sites(g);
-    int n = _global_from_local(s, bound);
+    int n = _global_from_local(s, bound, ctx);
     
     free_sites(s);
     
@@ -279,7 +279,7 @@ int hudson_kaplan(Sites *s)
     return i;
 }
 
-int hudson_kaplan_genes(Genes *g)
+int hudson_kaplan_genes(Genes *g, KwargContext *ctx)
 {
     Sites *s = genes2sites(g);
 //     int n = hudson_kaplan(s);
@@ -287,7 +287,7 @@ int hudson_kaplan_genes(Genes *g)
     int i, n;
     
     B = hudson_kaplan_local(s);
-    n = local2global(g->length-1, B);
+    n = local2global(g->length-1, B, ctx);
     
     /* Clean up */
     free_sites(s);
@@ -386,7 +386,7 @@ int **haplotype_bound_local(Sites *s)
 }
 
 int haplotype_heuristic(Sites *s, int maxsetsize, int maxintervallength,
-                        int subsetincreasethreshold)
+                        int subsetincreasethreshold, KwargContext *ctx)
 {
     int **B = haplotype_heuristic_local(s, maxsetsize, maxintervallength,
                                         subsetincreasethreshold);
@@ -395,7 +395,7 @@ int haplotype_heuristic(Sites *s, int maxsetsize, int maxintervallength,
     if (B == NULL)
         return 0;
     
-    n = local2global(s->length - 1, B);
+    n = local2global(s->length - 1, B, ctx);
     for (i = 0; i < s->length - 1; i++)
         free(B[i]);
     free(B);
@@ -404,11 +404,11 @@ int haplotype_heuristic(Sites *s, int maxsetsize, int maxintervallength,
 }
 
 int haplotype_heuristic_genes(Genes *g, int maxsetsize, int maxintervallength,
-                              int subsetincreasethreshold)
+                              int subsetincreasethreshold, KwargContext *ctx)
 {
     Sites *s = genes2sites(g);
     int n = haplotype_heuristic(s, maxsetsize, maxintervallength,
-                                subsetincreasethreshold);
+                                subsetincreasethreshold, ctx);
     
     free_sites(s);
     
@@ -1027,14 +1027,14 @@ int **haplotype_heuristic_local(Sites *s, int maxsetsize,
     return B;
 }
 
-int haplotype_bound(Sites *s)
+int haplotype_bound(Sites *s, KwargContext *ctx)
 {
-    return _global_from_local(s, haplotype_bound_local);
+    return _global_from_local(s, haplotype_bound_local, ctx);
 }
 
-int haplotype_bound_genes(Genes *g)
+int haplotype_bound_genes(Genes *g, KwargContext *ctx)
 {
-    return _global_from_local_genes(g, haplotype_bound_local);
+    return _global_from_local_genes(g, haplotype_bound_local, ctx);
 }
 
 /* The core computation of exact number of recombinations required for
@@ -1043,7 +1043,7 @@ int haplotype_bound_genes(Genes *g)
  */
 static void eagl_core(Genes *g, int max_length, int **B, HashTable *t,
                       int (*per_region_action)(void),
-                      int (*per_increment_action)(int, int, int **))
+                      int (*per_increment_action)(int, int, int **), KwargContext *ctx)
 {
     int i, j;
     Genes *h;
@@ -1052,13 +1052,13 @@ static void eagl_core(Genes *g, int max_length, int **B, HashTable *t,
     for (i = 2; i <= max_length; i++){
         for (j = 0; j <= g->length - i; j++){
             h = copy_region(g, j, j + i);
-            implode_genes(h);
-            if (!no_recombinations_required(h)){
+            implode_genes(h, ctx);
+            if (!no_recombinations_required(h, ctx)){
                 B[j][i - 2]
                 = beagle_reusable_bounded(h, NULL,
                                           (i > 2 ?
                                           _intmax(B[j][i - 3], B[j + 1][i - 3]) : 1),
-                                          INT_MAX, t);
+                                          INT_MAX, t, ctx);
             }
             free_genes(h);
             /* Check for termination */
@@ -1088,7 +1088,7 @@ static void eagl_core(Genes *g, int max_length, int **B, HashTable *t,
  */
 int **eagl_local(Genes *g, int max_length, int **B,
                  int (*per_region_action)(void),
-                 int (*per_increment_action)(int, int, int **))
+                 int (*per_increment_action)(int, int, int **), KwargContext *ctx)
 {
     int i;
     HashTable *t;
@@ -1113,7 +1113,7 @@ int **eagl_local(Genes *g, int max_length, int **B,
         + B[0][g->length - 2]);
     
     /* Compute local exact values */
-    eagl_core(g, max_length, B, t, per_region_action, per_increment_action);
+    eagl_core(g, max_length, B, t, per_region_action, per_increment_action, ctx);
     
     /* Clean up */
     hashtable_destroy(t, (void (*)(void *))free_packedgenes, NULL,
@@ -1124,14 +1124,14 @@ int **eagl_local(Genes *g, int max_length, int **B,
 
 int eagl(Genes *g, int max_length, int **B,
          int (*per_region_action)(void),
-         int (*per_increment_action)(int, int, int **))
+         int (*per_increment_action)(int, int, int **), KwargContext *ctx)
 {
     int i, n;
     
-    B = eagl_local(g, max_length, B, per_region_action, per_increment_action);
+    B = eagl_local(g, max_length, B, per_region_action, per_increment_action, ctx);
     if (B == NULL)
         return 0;
-    n = local2global(g->length - 1, B);
+    n = local2global(g->length - 1, B, ctx);
     for (i = 0; i < g->length - 1; i++)
         free(B[i]);
     free(B);
@@ -1160,11 +1160,11 @@ int eagl(Genes *g, int max_length, int **B,
 //     return B[0][n - 1];
 // }
 
-int local2global(int n, int **B)
+int local2global(int n, int **B, KwargContext *ctx)
 {
     int i, j;
     
-    if(gc_enabled) {
+    if(ctx->gc_enabled) {
         if(B[0][0] > 0) {
             for(j = 0; j < n-1; j++) {
                 // Reduce local bound for all intervals starting with 1 (1->x) by 1.
@@ -1181,7 +1181,7 @@ int local2global(int n, int **B)
                 B[0][i] = B[0][j] + B[j + 1][i - j - 1];
             }
         }
-        if((B[0][i] > B[0][i-1]) && gc_enabled && (i < n-1)){
+        if((B[0][i] > B[0][i-1]) && ctx->gc_enabled && (i < n-1)){
             // Using this to calculate the global bound if we are allowing one-site-long "gene conversions".
             // We have added at least one recombination point just before site i.
             // So, try turning these into one-site-long "gene conversions" to cover (once) the intervals starting at i.
