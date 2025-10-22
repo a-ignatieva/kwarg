@@ -289,8 +289,8 @@ int main(int argc, char **argv)
     x2seed = 0;
 
     // Default cost values from kwarg.c
-    ctx.se_cost = 0.5;
-    ctx.rm_cost = 0.9;
+    ctx.se_cost = -1.0;
+    ctx.rm_cost = -1.0;
     ctx.r_cost = 1.0;
     ctx.rr_cost = 2.0;
     
@@ -781,8 +781,8 @@ int main(int argc, char **argv)
         multruns = 0;
         T_in = 1;
         cost_in = 1;
-        se_costs[0] = (se_costs[0] !=0 ? se_costs[0] : 0.5);
-        rm_costs[0] = (rm_costs[0] !=0 ? rm_costs[0] : 0.9);
+        se_costs[0] = (se_costs[0] !=0 ? se_costs[0] : -1.0);
+        rm_costs[0] = (rm_costs[0] !=0 ? rm_costs[0] : -1.0);
         r_costs[0] = (r_costs[0] !=0 ? r_costs[0] : 1.0);
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
         if(ctx.howverbose > 0) {
@@ -794,8 +794,8 @@ int main(int argc, char **argv)
             ctx.howverbose = 0;
         }
         for(t = 0; t < cost_in; t++) {
-            se_costs[t] = (se_costs[t] !=0 ? se_costs[t] : 0.5);
-            rm_costs[t] = (rm_costs[t] !=0 ? rm_costs[t] : 0.9);
+            se_costs[t] = (se_costs[t] !=0 ? se_costs[t] : -1.0);
+            rm_costs[t] = (rm_costs[t] !=0 ? rm_costs[t] : -1.0);
             r_costs[t] = (r_costs[t] !=0 ? r_costs[t] : 1.0);
             rr_costs[t] = (rr_costs[t] != 0 ? rr_costs[t] : 2.0);
         }
