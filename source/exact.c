@@ -2105,3 +2105,378 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double, KwargContex
 
 }
 
+
+/* Output all possible things that can be coalesced */
+double output_coalescences(Genes *g, FILE *print_progress, int (*select)(double, KwargContext*), void (*reset)(KwargContext*), int ontheflyselection, int reference, KwargContext *ctx)
+{
+    int global, i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
+    double r = 0;
+    Index *start, *end;
+    LList *tmp = ctx->eventlist;
+    double printscore = 0;
+    HistoryFragment *f;
+    void (*action)(Genes *, KwargContext *);
+    const char *names[5];
+    names[0] = "Coalescence";
+    names[1] = "Single recombination";
+    names[2] = "Double recombination";
+    double *score_array;
+    
+    #ifdef ENABLE_VERBOSE
+    int v = verbose();
+    set_verbose(0);
+    #endif
+    
+    if(ctx->rm_max < INT_MAX) {
+        update_lookup(ctx->lookup, 0, ctx->rm_max);
+    }
+    
+    /* Create working copy of g */
+    g = copy_genes(g);
+    
+    if(ctx->howverbose > 0) {
+        fprintf(print_progress, "Input data:\n");
+        if(ctx->howverbose == 2) {
+            output_genes(g, print_progress, NULL);
+        }
+        fprintf(print_progress, "%d sequences with %d sites\n", g->n, g->length);
+    }
+
+    // Reduce the dataset
+    implode_genes(g, ctx);
+    if(ctx->howverbose > 0) {
+        printf("%d sequences with %d sites after reducing\n", g->n, g->length);
+    }
+    if(ctx->lookup != NULL) {
+        if((int)elist_get(ctx->lookup, 0) == INT_MAX)
+            update_lookup(ctx->lookup, 0, g->n * g->length);
+    }
+
+    global = 1;
+    
+    /* Repeatedly choose an event back in time, until data set has been
+     * explained.
+     */
+    _choice_function = select;
+    if (!ontheflyselection && global)
+        ctx->_predecessors = elist_make();
+    if ((ctx->_choice_fixed = no_recombinations_required(g, ctx)) != 0)
+        /* Data set can be explained without recombinations */
+        free_genes(g);
+    
+     while (!ctx->_choice_fixed) {
+        /* Reset statistics of reachable configurations */
+        ctx->_minam = ctx->_minseq = ctx->_minlen = INT_MAX;
+        ctx->_maxam = ctx->_maxseq = ctx->_maxlen = 0;
+        ctx->_greedy_choice = NULL;
+        nbdsize = 0;
+        preds = 0;
+
+        /* Determine interesting recombination ranges */
+        start = maximumsubsumedprefixs(g);
+        end = maximumsubsumedpostfixs(g);
+
+        action = _store;
+        
+        /* We have just imploded genes, but we still need to pursue paths
+            * coalescing compatible sequences where neither is subsumed in the
+            * other but where the ancestral material is still entangled.
+            */
+        if(ctx->howverbose > 0) {
+            fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+            fprintf(print_progress, "Searching possible predecessors:\n");
+        }
+        ctx->no_events = 0;
+        ctx->_recombinations = 0;
+        ctx->ac = COAL;
+        preds = 0;
+        nbdsize = 0;
+        
+        _coalesce_compatibleandentangled_map(g, action, ctx);
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
+            }
+        
+        if(ctx->se_cost != -1) {
+            ctx->no_events = 1;
+            ctx->_recombinations = ctx->se_cost;
+            ctx->ac = SE;
+            
+            seqerror_flips(g, action, ctx);
+                preds = elist_length(ctx->_predecessors) - nbdsize;
+                nbdsize = elist_length(ctx->_predecessors);
+                if(ctx->howverbose > 0) {
+                    fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
+                }
+        }
+        
+        if(ctx->rm_cost != -1) {
+            ctx->no_events = 1;
+            ctx->_recombinations = ctx->rm_cost;
+            ctx->ac = RM;
+            
+            recmut_flips(g, action, ctx);
+
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
+            }
+        }
+        
+        /* Try all sensible events with one split */
+        if(ctx->r_cost != -1) {
+            ctx->no_events = 1;
+            ctx->_recombinations = ctx->r_cost;
+            ctx->ac = RECOMB1;
+            
+            maximal_prefix_coalesces_map(g, start, end, action, ctx);
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
+            }
+            
+            maximal_postfix_coalesces_map(g, start, end, action, ctx);
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
+            }
+        }
+            
+        /* Try all sensible events with two splits */
+        if(ctx->rr_cost != -1) {
+            ctx->no_events = 2;
+            ctx->_recombinations = ctx->rr_cost;
+            ctx->ac = RECOMB2;
+            
+            maximal_infix_coalesces_map(g, start, end, action, ctx);
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
+            }
+            
+            maximal_overlap_coalesces_map(g, start, end, action, ctx);
+            preds = elist_length(ctx->_predecessors) - nbdsize;
+            nbdsize = elist_length(ctx->_predecessors);
+            if(ctx->howverbose > 0) {
+                fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
+            }
+        }
+        
+        if(ctx->howverbose > 0) {
+            fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors.", elist_length(ctx->_predecessors));
+            fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+        }
+        
+        
+        /* Finalise choice and prepare for next iteration */
+        free_genes(g);
+            /* Still looking for path to MRCA */
+            if (!ontheflyselection && global) {
+                /* So far we have only enumerated putative predecessors -
+                 * score these and choose one.
+                 */
+                
+                // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
+                ctx->eventlist = NULL;
+                elist_destroy(ctx->elements);
+                ctx->elements = NULL;
+                elist_destroy(ctx->sites);
+                ctx->sites = NULL;
+                reset(ctx);
+                
+                nbdsize = elist_length(ctx->_predecessors); // number of predecessors we score
+                if(nbdsize == 0) {
+                    fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+                }
+                total_nbdsize = total_nbdsize + nbdsize;
+                
+                // Calculate all the scores and store in an array
+                // Update sc_min and sc_max for renormalising the score later
+                score_array = malloc(elist_length(ctx->_predecessors) * sizeof(double));
+                if(!ctx->_choice_fixed) {
+                    ctx->sc_min = DBL_MAX, ctx->sc_max = 0;
+                    for (i = 0; i < elist_length(ctx->_predecessors); i++) {
+                        f = (HistoryFragment *)elist_get(ctx->_predecessors, i);
+                        _reset_builtins(f->g, ctx); // set f to be _greedy_currentstate
+                        ctx->_recombinations = f->recombinations;
+                        // Calculate all the scores and update the min and max
+                        score_array[i] = scoring_function(f->g, ctx);
+                    }
+                }
+                
+                // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+                for (i = 0; i < elist_length(ctx->_predecessors); i++) {
+                    f = (HistoryFragment *)elist_get(ctx->_predecessors, i);
+                    _reset_builtins(f->g, ctx); // set _greedy_currentstate to be f->g
+                    // Bug fix: need to update _recombinations otherwise this will always be 2
+                    ctx->_recombinations = f->recombinations;
+                    printscore = score_renormalise(f->g, score_array[i], ctx);
+                    if (print_progress != NULL && ctx->howverbose == 2) {
+                        fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i+1, f->recombinations);
+                        output_genes(f->g, print_progress, NULL);
+                        print_elist(f->elements, "Sequences: ");
+                        print_elist(f->sites, "Sites: ");
+                        fprintf(print_progress, "Predecessor score: %.0f \n\n",
+                                (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
+                        fflush(print_progress);
+                    }
+                    if (select(printscore, ctx)) {
+                        // compute score and check if better than that of _greedy_choice
+                        /* If so, discard old choice */
+                        if (ctx->_greedy_choice != NULL) {
+                            free_genes(ctx->_greedy_choice->g);
+                            if (ctx->_greedy_choice->event != NULL) {
+                                while (Length(ctx->_greedy_choice->event) != 0)
+                                    free(Pop(ctx->_greedy_choice->event));
+                                DestroyLList(ctx->_greedy_choice->event);
+                            }
+                            if(ctx->_greedy_choice->elements != NULL)
+                                elist_destroy(ctx->_greedy_choice->elements);
+                            if(ctx->_greedy_choice->sites != NULL)
+                                elist_destroy(ctx->_greedy_choice->sites);
+                            free(ctx->_greedy_choice);
+                        }
+                        /* Set f to be new choice */
+                        ctx->_greedy_choice = f;
+                    }
+                    else {
+                            /* Discard f */
+                            free_genes(f->g);
+                            if (f->event != NULL) {
+                                while (Length(f->event) != 0)
+                                    free(Pop(f->event));
+                                DestroyLList(f->event);
+                            }
+                            if(f->elements != NULL) {
+                                elist_destroy(f->elements);
+                            }
+                            if(f->sites != NULL) {
+                                elist_destroy(f->sites);
+                            }
+                            free(f);
+                    }
+                }
+                
+                free(score_array);
+                
+                ctx->eventlist = tmp;
+                elist_empty(ctx->_predecessors, NULL); // this should now be empty
+            }
+            
+            g = ctx->_greedy_choice->g;
+            ctx->elements = ctx->_greedy_choice->elements;
+            ctx->sites = ctx->_greedy_choice->sites;
+            
+            switch(ctx->_greedy_choice->action) {
+                case COAL:
+                    break;
+                case SE:
+                    seflips = seflips + ctx->_greedy_choice->recombinations/ctx->se_cost;
+                    break;
+                case RM:
+                    rmflips = rmflips + ctx->_greedy_choice->recombinations/ctx->rm_cost;
+                    break;
+                case RECOMB1:
+                    recombs++;
+                    break;
+                case RECOMB2:
+                    recombs += 2;
+                    break;
+            }
+            
+            if (print_progress != NULL && ctx->howverbose == 2) {
+                fprintf(print_progress, "%s completed at cost of %.3f.\n", names[ctx->_greedy_choice->action], ctx->_greedy_choice->recombinations);
+                fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+                fprintf(print_progress, "Current data:\n");
+                output_genes(ctx->_greedy_choice->g, print_progress, NULL);
+                fflush(print_progress);
+            }
+            if (print_progress != NULL && ctx->howverbose == 1) {
+                fprintf(print_progress, "%s at cost %.3f \n", names[ctx->_greedy_choice->action], ctx->_greedy_choice->recombinations);
+                fflush(print_progress);
+            }
+            /* Predecessor and events leading to it are stored in _greedy_choice */
+//         }
+        
+        
+        if (ctx->eventlist != NULL) {
+            Append(ctx->eventlist, ctx->_greedy_choice->event);
+        }
+        
+        r += ctx->_greedy_choice->recombinations;
+        
+        /* Clean up */
+        free(ctx->_greedy_choice);
+        free(start);
+        free(end);
+        if(ctx->_choice_fixed) {
+            free_genes(g);
+        }
+        
+        // Can abandon the run if the number of recombinations already exceeds rec_max
+        if(recombs > ctx->rec_max) {
+            bad_soln = 1;
+            break;
+        }
+        
+        // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
+        // seen in earlier solutions.
+        if(ctx->rec_max != INT_MAX && ctx->lookup != NULL) {
+            if(seflips + rmflips > (int)elist_get(ctx->lookup, recombs)) {
+                bad_soln = 1;
+                break;
+            }
+        }
+        
+    }
+    
+    // If we exited the loop because of a sub-optimal solution, record this
+    if(bad_soln) {
+        if(reference > 0){
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, ctx->Temp, ctx->se_cost, ctx->rm_cost, ctx->r_cost, ctx->rr_cost, total_nbdsize);
+        } else {
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, ctx->Temp, ctx->se_cost, ctx->rm_cost, ctx->r_cost, ctx->rr_cost, total_nbdsize);
+        }
+    }
+    else {
+    // Otherwise, record the result
+        if (print_progress != NULL && ctx->howverbose > 0) {
+            fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
+            fprintf(print_progress, "Total event cost: %.1f\n", r);
+            if(reference > 0) {
+                fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
+                    "SE", "RM", "R", "N_states", "Time");
+            } else {
+                fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost", "SE", "RM", "R", "N_states", "Time");
+            }
+        }
+        if(reference > 0) {
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, ctx->Temp, ctx->se_cost, ctx->rm_cost, ctx->r_cost, ctx->rr_cost, seflips, rmflips, recombs, total_nbdsize);
+        } else {
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, ctx->Temp, ctx->se_cost, ctx->rm_cost, ctx->r_cost, ctx->rr_cost, seflips, rmflips, recombs, total_nbdsize);
+        }
+        if(ctx->lookup != NULL) {
+            if(seflips + rmflips < (int)elist_get(ctx->lookup, recombs)){
+                // If found a better bound r < rec_max for Rmin, update.
+                if(seflips + rmflips == 0) {
+                    ctx->rec_max = recombs;
+                }
+                update_lookup(ctx->lookup, recombs, seflips + rmflips);
+            }
+        }
+    }
+    
+    elist_destroy(ctx->_predecessors);
+    
+
+    
+    return r;
+
+}
+

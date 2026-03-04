@@ -1,7 +1,7 @@
 /***************************************************************************
  * 
- *    simplify.c: Import a dataset and run the Clean algorithm
- * 
+ *    imbroglio.c: Import a dataset and run the Clean algorithm
+ *
  ***************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,14 +135,6 @@ int main(int argc, char **argv)
     
     // Print stats for input dataset
     printf("Input dataset: %d sequences, %d sites\n", g->n, g->length);
-    
-    output_genes(g, fp, NULL);
-    
-    printf("Sequences:\n");
-    print_elist(ctx.elements, NULL);
-    
-    printf("Sites:\n");
-    print_elist(ctx.sites, NULL);
     
     if(collapse==1) {
         implode_genes(g, &ctx);

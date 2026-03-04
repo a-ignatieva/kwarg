@@ -3168,6 +3168,30 @@ int implode_genes(Genes *g, KwargContext *ctx)
     return (n - g->n) + (m - g->length);
 }
 
+/* Same as above but without removing identical adjacent sites
+ */
+int implode_genes_keepcols(Genes *g, KwargContext *ctx)
+{
+    int n = g->n, m = g->length, change = 1, tmp;
+
+#ifdef ENABLE_VERBOSE
+        printf("Imploding genes:\n");
+#endif
+
+    while (change) {
+#ifdef ENABLE_VERBOSE
+        if (verbose())
+            output_genes_indexed(g, NULL);
+#endif
+        change = remove_uninformative(g, ctx);
+        if (g->n == 0) break;
+        tmp = coalesce_subsumed(g, ctx);
+        change |= tmp;
+    }
+
+    return (n - g->n) + (m - g->length);
+}
+
 /* Simple, fast checks for whether recombinations may be required to
  * explain g. This is not an exhaustive check, so even if it returns
  * False, g may be explained without recombinations.

@@ -413,7 +413,7 @@ void print_elist(EList *e, char *comment) {
     }
     for(i=0; i < e->count; i++) {
         p = (int)(elist_get(e, i));
-        if(p > 0) {
+        if(p >= 0) {
             printf("%d ", p);
         }
         else {

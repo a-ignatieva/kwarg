@@ -158,6 +158,7 @@ int remove_nonsegregating(Genes *g, KwargContext *ctx);
 int coalesce_subsumed(Genes *g, KwargContext *ctx);
 int reduce_coalesce(Genes *g, int *elements);
 int implode_genes(Genes *g, KwargContext *ctx);
+int implode_genes_keepcols(Genes *g, KwargContext *ctx);
 int no_recombinations_required(Genes *g, KwargContext *ctx);
 void force_safeevents(Genes *g, KwargContext *ctx);
 int force_mutations(Genes *g);
