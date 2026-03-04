@@ -226,6 +226,39 @@ int **hudson_kaplan_local(Sites *s)
     return B;
 }
 
+//int **sequence_types(Genes *g, int **B, int q)
+//{
+//    int type00, type01, type10, type11;
+//    int i, j;
+//    EList *l = elist_make();
+//    elist_append(l, q);
+//    Genes *g = select_genes(g, l);
+//    
+//    int i, blocks = divblocksize(g->length - 1) + 1;
+//    Genes *h = xmalloc(sizeof(Genes));
+//    h->n = 1;
+//    h->length = g->length;
+//    h->data = (Gene *)xmalloc(h->n * sizeof(Gene));
+//    h->data[0].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+//    memcpy(h->data[0].type, g->data[q].type, blocks * sizeof(unsigned long));
+//    h->data[0].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+//    memcpy(h->data[0].ancestral, g->data[0q].ancestral, blocks * sizeof(unsigned long));
+//    
+//    if (s->length < 2)
+//        return NULL;
+//    
+//    for (i = 0; i < s->length - 1; i++){
+//        for (j = i + 1; j < s->length; j++){
+//            if (B[i][j - i - 1] == 1) {
+//                // get type of q for this site pair
+//                
+//            }
+//        }
+//    }
+//    
+//    return B;
+//}
+
 /* Compute lower bounds on number of recombinations required for s
  * using Hudson and Kaplan's conflicting site technique. The method
  * applies a heuristic part which may reduce the runtime to less than
