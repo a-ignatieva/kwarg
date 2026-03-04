@@ -87,7 +87,7 @@ endif
 
 SRCFILES = beagle.c kwarg.c simplify.c imbroglio.c flip.c gene.c llist.c elist.c hashtable.c getwordsize.c common.c bounds.c exact.c mergesort.c enumerate.c arg.c backtrack.c topological_sort.c mystring.c
 HDRFILES = gene.h llist.h elist.h hashtable.h common.h bounds.h exact.h mergesort.h enumerate.h arg.h backtrack.h topological_sort.h mystring.h
-EXECUTABLES = beagle kwarg simplify flip getwordsize
+EXECUTABLES = beagle kwarg simplify imbroglio flip getwordsize
 DATA = kreitman_snp.txt
 SCRIPTS = generatebitfunctions.py
 INSTRUCTIONS = 
