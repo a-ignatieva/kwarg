@@ -1099,6 +1099,21 @@ void output_genes_indexed(Genes *g, FILE *fp)
     fprintf(fp, "\n");
 }
 
+void output_genes_with_labels(Genes *g, FILE *fp, KwargContext *ctx)
+{
+    int i;
+
+    /* Set up file for output */
+    if (fp == NULL)
+        fp = stdout;
+
+    output_genes(g, fp, NULL);
+    fprintf(fp, ">>");
+    for (i = 0; i < g->length; i++)
+        fprintf(fp, " %d", i % 10);
+    fprintf(fp, "\n");
+}
+
 /* Output gene data in a to file fp (stdout if fp is NULL), prefixed
  * with comment if not NULL.
  */

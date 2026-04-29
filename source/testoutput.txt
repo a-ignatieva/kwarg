@@ -1,11 +1,12 @@
-input_data
+> input_data
 1000
 0100
 0001
 111x
 xx11
 101x
-recombined
+>> 0 1 2 3
+> recombined
 1000
 0100
 0xxx
@@ -13,22 +14,26 @@ recombined
 xx11
 101x
 x001
-recombined_reduced
-000
-100
-11x
-x11
-01x
-001
-recombined_coalesced_reduced_0
-000
-100
-111
-001
-01x
-recombined_coalesced_reduced_1
-000
-100
-11x
-011
-001
+>> 0 1 2 3
+> recombined_reduced
+1000
+0100
+111x
+xx11
+101x
+x001
+>> 0 1 2 3
+> recombined_coalesced_reduced_0
+1000
+0100
+1111
+x001
+101x
+>> 0 1 2 3
+> recombined_coalesced_reduced_1
+1000
+0100
+111x
+1011
+x001
+>> 0 1 2 3

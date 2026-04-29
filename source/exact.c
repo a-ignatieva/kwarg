@@ -2099,153 +2099,176 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double, KwargContex
     
     elist_destroy(ctx->_predecessors);
     
-
-    
     return r;
 
 }
 
-/* Output all possible things that can be coalesced */
-double output_coalescences(Genes *g, FILE *print_progress, KwargContext *ctx, FILE *fp)
+/* Output all possible entangled sequences that can be coalesced */
+double output_coalescences(Genes *g, FILE *print_progress)
 {
-    int global, i, nbdsize = 0, total_nbdsize = 0, preds;
-    LList *tmp = ctx->eventlist;
-    double printscore = 0;
-    HistoryFragment *f;
-    void (*action)(Genes *, KwargContext *);
+    int i, j;
     
-#ifdef ENABLE_VERBOSE
-    int v = verbose();
-    set_verbose(0);
-#endif
+    for (i = 0; i < g->n; i++)
+        for (j = i + 1; j < g->n; j++)
+            if (compatible(g, i, j)) {
+                if (entangled(g, i, j)) {
+                    fprintf(print_progress, "%d %d\n", i, j);
+                }
+            }
     
-    /* Create working copy of g */
-    g = copy_genes(g);
-    
-    if(ctx->howverbose > 0) {
-        fprintf(print_progress, "Data after recombination event:\n");
-        if(ctx->howverbose == 2) {
-            output_genes(g, print_progress, NULL);
-            
-        }
-    }
-    
-    // Reduce the dataset
-    fprintf(fp, "recombined\n");
-    output_genes(g, fp, NULL);
-    implode_genes(g, ctx);
-    fprintf(fp, "recombined_reduced\n");
-    output_genes(g, fp, NULL);
-    if(ctx->howverbose > 0) {
-        fprintf(print_progress, "Data after recombination event and simplification:\n");
-        if(ctx->howverbose == 2) {
-            output_genes(g, print_progress, NULL);
-        }
-    }
-    if(ctx->lookup != NULL) {
-        if((int)elist_get(ctx->lookup, 0) == INT_MAX)
-            update_lookup(ctx->lookup, 0, g->n * g->length);
-    }
-    
-    ctx->_predecessors = elist_make();
-    if ((ctx->_choice_fixed = no_recombinations_required(g, ctx)) != 0)
-    /* Data set can be explained without recombinations */
-        free_genes(g);
-    
-    /* Reset statistics of reachable configurations */
-    ctx->_minam = ctx->_minseq = ctx->_minlen = INT_MAX;
-    ctx->_maxam = ctx->_maxseq = ctx->_maxlen = 0;
-    ctx->_greedy_choice = NULL;
-    nbdsize = 0;
-    preds = 0;
-    
-    if(ctx->howverbose > 0) {
-        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
-        fprintf(print_progress, "Searching possible predecessors:\n");
-    }
-    ctx->no_events = 0;
-    ctx->_recombinations = 0;
-    ctx->ac = COAL;
-    preds = 0;
-    nbdsize = 0;
-    
-    _coalesce_compatibleandentangled_map(g, _store, ctx);
-    preds = elist_length(ctx->_predecessors) - nbdsize;
-    nbdsize = elist_length(ctx->_predecessors);
-    if(ctx->howverbose > 0) {
-        fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
-    }
-    
-    if(ctx->howverbose > 0) {
-        fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors", elist_length(ctx->_predecessors));
-        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
-    }
-    
-    
-    /* Finalise choice and prepare for next iteration */
-    free_genes(g);
-    // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
-    ctx->eventlist = NULL;
-    elist_destroy(ctx->elements);
-    ctx->elements = NULL;
-    elist_destroy(ctx->sites);
-    ctx->sites = NULL;
-    
-    nbdsize = elist_length(ctx->_predecessors); // number of predecessors we score
-    if(nbdsize == 0) {
-        fprintf(stderr, "No possible events.");
-    }
-    total_nbdsize = total_nbdsize + nbdsize;
-    
-    // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
-    for (i = 0; i < elist_length(ctx->_predecessors); i++) {
-        f = (HistoryFragment *)elist_get(ctx->_predecessors, i);
-        _reset_builtins(f->g, ctx); // set _greedy_currentstate to be f->g
-        fprintf(fp, "recombined_coalesced_reduced_%d\n", i);
-        output_genes(f->g, fp, NULL);
-        if (print_progress != NULL && ctx->howverbose == 2) {
-            fprintf(print_progress, "Predecessor %d\n", i);
-            output_genes(f->g, print_progress, NULL);
-            print_elist(f->elements, "Sequences: ");
-            print_elist(f->sites, "Sites: ");
-            fflush(print_progress);
-        }
-        /* Discard f */
-        free_genes(f->g);
-        if (f->event != NULL) {
-            while (Length(f->event) != 0)
-                free(Pop(f->event));
-            DestroyLList(f->event);
-        }
-        if(f->elements != NULL) {
-            elist_destroy(f->elements);
-        }
-        if(f->sites != NULL) {
-            elist_destroy(f->sites);
-        }
-        free(f);
-    }
-    
-    ctx->eventlist = tmp;
-    elist_empty(ctx->_predecessors, NULL); // this should now be empty
-    
-    if (ctx->eventlist != NULL) {
-        Append(ctx->eventlist, ctx->_greedy_choice->event);
-    }
-    
-    /* Clean up */
-    free(ctx->_greedy_choice);
-    if(ctx->_choice_fixed) {
-        free_genes(g);
-    }
-    
-    if (print_progress != NULL && ctx->howverbose > 0) {
-        fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
-    }
-    
-    elist_destroy(ctx->_predecessors);
-
     return 0;
 
 }
+
+//double do_recombination(Genes *g, FILE *print_progress, KwargContext *ctx, FILE *fp)
+//{
+//    int global, i, j, nbdsize = 0, total_nbdsize = 0, preds;
+//    LList *tmp = ctx->eventlist;
+//    double printscore = 0;
+//    HistoryFragment *f;
+//    void (*action)(Genes *, KwargContext *);
+//    
+//#ifdef ENABLE_VERBOSE
+//    int v = verbose();
+//    set_verbose(0);
+//#endif
+//    
+//    /* Create working copy of g */
+//    g = copy_genes(g);
+//    
+//    if(ctx->howverbose > 0) {
+//        fprintf(print_progress, "Data after recombination event:\n");
+//        if(ctx->howverbose == 2) {
+//            output_genes_with_labels(g, print_progress, ctx);
+//            
+//        }
+//    }
+//    
+//    // Reduce the dataset
+//    fprintf(fp, "> recombined\n");
+//    output_genes_with_labels(g, fp, ctx);
+//    implode_genes(g, ctx);
+//    fprintf(fp, "> recombined_reduced\n");
+//    output_genes_with_labels(g, fp, ctx);
+//    if(ctx->howverbose > 0) {
+//        fprintf(print_progress, "Data after recombination event and simplification:\n");
+//        if(ctx->howverbose == 2) {
+//            output_genes_with_labels(g, print_progress, ctx);
+//        }
+//    }
+//    if(ctx->lookup != NULL) {
+//        if((int)elist_get(ctx->lookup, 0) == INT_MAX)
+//            update_lookup(ctx->lookup, 0, g->n * g->length);
+//    }
+//    
+//    ctx->_predecessors = elist_make();
+//    if ((ctx->_choice_fixed = no_recombinations_required(g, ctx)) != 0)
+//    /* Data set can be explained without recombinations */
+//        free_genes(g);
+//    
+//    /* Reset statistics of reachable configurations */
+//    ctx->_minam = ctx->_minseq = ctx->_minlen = INT_MAX;
+//    ctx->_maxam = ctx->_maxseq = ctx->_maxlen = 0;
+//    ctx->_greedy_choice = NULL;
+//    nbdsize = 0;
+//    preds = 0;
+//    
+//    if(ctx->howverbose > 0) {
+//        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+//        fprintf(print_progress, "Searching possible predecessors:\n");
+//    }
+//    ctx->no_events = 0;
+//    ctx->_recombinations = 0;
+//    ctx->ac = COAL;
+//    preds = 0;
+//    nbdsize = 0;
+//    
+//    _coalesce_compatibleandentangled_map(g, _store, ctx);
+//    preds = elist_length(ctx->_predecessors) - nbdsize;
+//    nbdsize = elist_length(ctx->_predecessors);
+//    if(ctx->howverbose > 0) {
+//        fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
+//    }
+//    
+//    for (i = 0; i < g->n; i++)
+//        for (j = i + 1; j < g->n; j++)
+//            if (compatible(g, i, j)) {
+//                if (entangled(g, i, j)) {
+//                    fprintf(print_progress, "%d %d entangled\n", i, j);
+//                }
+//            }
+//    
+//    if(ctx->howverbose > 0) {
+//        fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors", elist_length(ctx->_predecessors));
+//        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+//    }
+//    
+//    
+//    /* Finalise choice and prepare for next iteration */
+//    free_genes(g);
+//    // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
+//    ctx->eventlist = NULL;
+//    elist_destroy(ctx->elements);
+//    ctx->elements = NULL;
+//    elist_destroy(ctx->sites);
+//    ctx->sites = NULL;
+//    
+//    nbdsize = elist_length(ctx->_predecessors); // number of predecessors we score
+//    if(nbdsize == 0) {
+//        fprintf(stderr, "No possible events.");
+//    }
+//    total_nbdsize = total_nbdsize + nbdsize;
+//    
+//    // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+//    for (i = 0; i < elist_length(ctx->_predecessors); i++) {
+//        f = (HistoryFragment *)elist_get(ctx->_predecessors, i);
+//        _reset_builtins(f->g, ctx); // set _greedy_currentstate to be f->g
+//        fprintf(fp, "> recombined_coalesced_reduced_%d\n", i);
+//        output_genes_with_labels(f->g, fp, ctx);
+//        if (print_progress != NULL && ctx->howverbose == 2) {
+//            fprintf(print_progress, "Predecessor %d\n", i);
+//            output_genes_with_labels(f->g, print_progress, ctx);
+//            print_elist(f->elements, "Sequences: ");
+//            print_elist(f->sites, "Sites: ");
+//            fflush(print_progress);
+//        }
+//        /* Discard f */
+//        free_genes(f->g);
+//        if (f->event != NULL) {
+//            while (Length(f->event) != 0)
+//                free(Pop(f->event));
+//            DestroyLList(f->event);
+//        }
+//        if(f->elements != NULL) {
+//            elist_destroy(f->elements);
+//        }
+//        if(f->sites != NULL) {
+//            elist_destroy(f->sites);
+//        }
+//        free(f);
+//    }
+//    
+//    ctx->eventlist = tmp;
+//    elist_empty(ctx->_predecessors, NULL); // this should now be empty
+//    
+//    if (ctx->eventlist != NULL) {
+//        Append(ctx->eventlist, ctx->_greedy_choice->event);
+//    }
+//    
+//    /* Clean up */
+//    free(ctx->_greedy_choice);
+//    if(ctx->_choice_fixed) {
+//        free_genes(g);
+//    }
+//    
+//    if (print_progress != NULL && ctx->howverbose > 0) {
+//        fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
+//    }
+//    
+//    elist_destroy(ctx->_predecessors);
+//
+//    return 0;
+//
+//}
+
 

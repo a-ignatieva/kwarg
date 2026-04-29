@@ -119,6 +119,7 @@ AnnotatedGenes *read_genes(char *fname, Gene_Format f, Gene_SeqType t);
 void output_genes(Genes *g, FILE *fp, char *comment);
 void output_labelled_genes(Genes *g, FILE *fp, LList *labels);
 void output_genes_indexed(Genes *s, FILE *fp);
+void output_genes_with_labels(Genes *g, FILE *fp, KwargContext *ctx);
 void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment);
 void add_gene(Genes *g, Gene *new, ...);
 void add_site(Sites *s, Site *new, ...);

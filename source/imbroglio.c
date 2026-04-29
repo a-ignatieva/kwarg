@@ -25,8 +25,8 @@ static void _print_usage(FILE *f, char *name)
     fprintf(f, "Usage: %s [options] < [input]\n", name);
     pretty_print(f, "This is a silly program.", 70, 0);
     fprintf(f, "Legal options are:\n");
-    print_option(f, "-V[x]", "If running a single iteration with given cost parameters, this controls the level of verbosity. \nx = 0: no extra output \nx = 1: during each neighbourhood search, output the number of neighbours explored, the move selected and its cost \nx = 2: during each neighbourhood search, output the number of neighbours explored, the resulting configuration and cost of each neighbour, the move selected and its cost.", 70, -1);
-    print_option(f, "-b[name]", "Output a minimum recombination history to file name.", 70, -1);
+    print_option(f, "-V[x]", "This controls the level of verbosity. \nx = 0: no extra output \nx = 1: during each neighbourhood search, output the number of neighbours explored, the move selected and its cost \nx = 2: during each neighbourhood search, output the number of neighbours explored, the resulting configuration and cost of each neighbour, the move selected and its cost.", 70, -1);
+    print_option(f, "-b[name]", "Output file name.", 70, -1);
     print_option(f, "-R[x]", "Which sequence to recombine (indexing input sequences from 0). No recombination if this is -1.", 70, -1);
     print_option(f, "-P[x]", "After which site to recombine (indexing input sites from 0). No recombination if this is -1.", 70, -1);
     print_option(f, "-o", "Assume input data is in own format. Default is to first try to parse data in own format, and if that fails to try to parse it in fasta format. Specifying this option, no attempt will be made to try to parse the data in fasta format.", 70, -1);
@@ -265,8 +265,6 @@ int main(int argc, char **argv)
         remove_annotatedgene(a, 0);
     g = a->g;
     
-    printf("Recombining sequence %d before site %d\n", R, P);
-    
     /* Set up structures for computation */
     if ((Length(history_files) > 0)) {
         ctx.eventlist = MakeLList();
@@ -309,18 +307,16 @@ int main(int argc, char **argv)
     }
     
     // Do the recombination event
-    fprintf(fp, "input_data\n");
-    output_genes(g, fp, NULL);
+    fprintf(fp, "> input_data\n");
+    output_genes_with_labels(g, fp, &ctx);
     if(R >= 0 & P > 0) {
         split(h, R, P, &ctx);
     }
+    implode_genes_keepcols(h, &ctx);
+    fprintf(fp, "> recombined_reduced\n");
+    output_genes_with_labels(h, fp, &ctx);
     
-    // Get a history
-    tic = clock();
-    n = output_coalescences(h, print_progress, &ctx, fp);
-    toc = clock();
-    timer = (double)(toc - tic) / CLOCKS_PER_SEC;
-    printf("Time taken: %15.8f\n", timer);
+    output_coalescences(h, print_progress);
     
     free_genes(h);
     ctx.elements = NULL;

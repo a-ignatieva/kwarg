@@ -19,5 +19,6 @@ double scoring_function(Genes *g, KwargContext *ctx);
 double score_renormalise(Genes *g, double sc, KwargContext *ctx);
 double ggreedy(Genes *g, FILE *print_progress, int (*select)(double, KwargContext*),
                void (*reset)(KwargContext*), int ontheflyselection, int reference, KwargContext *ctx);
-double output_coalescences(Genes *g, FILE *print_progress, KwargContext *ctx, FILE *fp);
+double output_coalescences(Genes *g, FILE *print_progress);
+//double do_recombination(Genes *g, FILE *print_progress, KwargContext *ctx, FILE *fp);
 #endif
